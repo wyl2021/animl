@@ -19,6 +19,8 @@
                 <router-link to="/users/add">添加用户</router-link>
               </div>
             </li>
+            <li><router-link to="/login" class="nav-btn">登录</router-link></li>
+            <li><router-link to="/register" class="nav-btn register-btn">注册</router-link></li>
           </ul>
         </nav>
       </div>
@@ -167,6 +169,11 @@ body {
   gap: 0.3rem;
   padding: 0.5rem 0;
   transition: color 0.3s ease;
+  outline: none;
+}
+
+.dropdown-toggle:focus {
+  outline: none;
 }
 
 .dropdown-toggle:hover {
@@ -215,10 +222,34 @@ body {
     opacity: 0;
     transform: translateY(-10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+.nav-btn {
+  padding: 0.5rem 1.2rem;
+  border-radius: 20px;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  border: none;
+  cursor: pointer;
+}
+
+.nav-btn:hover {
+  transform: translateY(-2px);
+}
+
+.register-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white !important;
+}
+
+.register-btn:hover {
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
 }
 
 .main {
@@ -269,8 +300,13 @@ body {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* 全局错误状态 */
