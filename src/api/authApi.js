@@ -1,30 +1,30 @@
 import { request } from './index';
 
 const authApi = {
-  login: async (email, password) => {
+  login: async (account, password) => {
     return await request('/login', {
       method: 'POST',
-      body: JSON.stringify({ email, password })
+      body: JSON.stringify({ account, password })
     });
   },
-  
-  register: async (name, email, password) => {
+
+  register: async (name, account, password) => {
     return await request('/register', {
       method: 'POST',
-      body: JSON.stringify({ name, email, password })
+      body: JSON.stringify({ name, account, password })
     });
   },
-  
+
   logout: () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
   },
-  
+
   getCurrentUser: () => {
     const user = localStorage.getItem('user');
     return user ? JSON.parse(user) : null;
   },
-  
+
   isAuthenticated: () => {
     return !!localStorage.getItem('token');
   }

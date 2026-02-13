@@ -1,34 +1,36 @@
 <template>
   <div class="user-form">
-    <h2>{{ isEdit ? '编辑用户' : '添加用户' }}</h2>
-    <div v-if="loading" class="loading">
-      <p>加载中...</p>
-    </div>
-    <form v-else @submit.prevent="saveUser">
-      <div class="form-group">
-        <label for="name">姓名</label>
-        <input type="text" id="name" v-model="user.name" required placeholder="请输入姓名">
-      </div>
-      <div class="form-group">
-        <label for="email">邮箱</label>
-        <input type="email" id="email" v-model="user.email" required placeholder="请输入邮箱">
-      </div>
-      <div class="form-group">
-        <label for="password">密码</label>
-        <input type="password" id="password" v-model="user.password" :required="!isEdit" placeholder="请输入密码">
-      </div>
-      <div class="form-actions">
-        <router-link to="/users" class="btn btn-secondary">取消</router-link>
-        <button type="submit" class="btn btn-primary" :disabled="saving">
-          {{ saving ? '保存中...' : '保存' }}
-        </button>
-      </div>
-    </form>
+    <el-card>
+      <template #header>
+        <h2>{{ isEdit ? '编辑用户' : '添加用户' }}</h2>
+      </template>
+      <el-form v-loading="loading" :model="user" label-width="80px">
+        <el-form-item label="姓名" required>
+          <el-input v-model="user.name" placeholder="请输入姓名" clearable />
+        </el-form-item>
+        <el-form-item label="邮箱" required>
+          <el-input v-model="user.email" type="email" placeholder="请输入邮箱" clearable />
+        </el-form-item>
+        <el-form-item label="密码" :required="!isEdit">
+          <el-input 
+            v-model="user.password" 
+            type="password" 
+            :placeholder="isEdit ? '留空则不修改密码' : '请输入密码'" 
+            show-password 
+          />
+        </el-form-item>
+        <el-form-item>
+          <el-button @click="$router.push('/users')">取消</el-button>
+          <el-button type="primary" @click="saveUser" :loading="saving">保存</el-button>
+        </el-form-item>
+      </el-form>
+    </el-card>
   </div>
 </template>
 
 <script>
-import userApi from '../../api/userApi';
+import { ElMessage } from 'element-plus'
+import userApi from '../../api/userApi'
 
 export default {
   name: 'UserForm',
@@ -42,70 +44,72 @@ export default {
       },
       loading: true,
       saving: false
-    };
+    }
   },
   computed: {
     isEdit() {
-      return !!this.$route.params.id;
+      return !!this.$route.params.id
     }
   },
   mounted() {
     if (this.isEdit) {
-      this.loadUser();
+      this.loadUser()
     } else {
-      this.loading = false;
+      this.loading = false
     }
   },
   methods: {
     async loadUser() {
       try {
-        const id = parseInt(this.$route.params.id);
-        const userData = await userApi.getUser(id);
+        const id = parseInt(this.$route.params.id)
+        const userData = await userApi.getUser(id)
         this.user = {
           ...userData,
-          password: '' // 密码字段不从API返回
-        };
+          password: ''
+        }
       } catch (error) {
-        console.error('获取用户信息失败:', error);
-        alert('获取用户信息失败，请重试');
+        console.error('获取用户信息失败:', error)
+        ElMessage.error('获取用户信息失败，请重试')
       } finally {
-        this.loading = false;
+        this.loading = false
       }
     },
     async saveUser() {
+      if (!this.user.name || !this.user.email) {
+        ElMessage.warning('请填写必填项')
+        return
+      }
+      
       try {
-        this.saving = true;
+        this.saving = true
         
         const userData = {
           name: this.user.name,
           email: this.user.email
-        };
+        }
         
-        // 只有在添加用户或修改密码时才包含password字段
         if (this.user.password) {
-          userData.password = this.user.password;
+          userData.password = this.user.password
         }
         
         if (this.isEdit) {
-          // 编辑用户
-          await userApi.updateUser(this.user.id, userData);
-          alert('用户编辑成功');
+          await userApi.updateUser(this.user.id, userData)
+          ElMessage.success('用户编辑成功')
         } else {
-          // 添加用户
-          await userApi.createUser(userData);
-          alert('用户添加成功');
+          await userApi.createUser(userData)
+          ElMessage.success('用户添加成功')
         }
         
-        this.$router.push('/users');
+        this.$router.push('/users')
       } catch (error) {
-        console.error('保存用户失败:', error);
-        alert('保存用户失败，请重试');
+        console.error('保存用户失败:', error)
+        ElMessage.error('保存用户失败，请重试')
       } finally {
-        this.saving = false;
+        this.saving = false
       }
     }
   }
-};
+}
 </script>
 
 <style scoped>

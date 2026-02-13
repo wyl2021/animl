@@ -7,12 +7,15 @@ const router = createRouter({
     {
       path: '/login',
       name: 'login',
-      component: () => import('../views/auth/Login.vue')
+      component: () => import('../views/auth/Login.vue'),
+      meta: { isAuthPage: true }
+
     },
     {
       path: '/register',
       name: 'register',
-      component: () => import('../views/auth/Register.vue')
+      component: () => import('../views/auth/Register.vue'),
+      meta: { isAuthPage: true }
     },
     {
       path: '/',

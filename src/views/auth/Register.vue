@@ -7,52 +7,24 @@
           <h2>创建账户</h2>
           <p>加入我们的猫咪乐园</p>
         </div>
-        <form @submit.prevent="handleRegister" class="register-form">
-          <div class="form-group">
-            <label for="username">用户名</label>
-            <input
-              type="text"
-              id="username"
-              v-model="form.username"
-              placeholder="请输入用户名"
-              required
-            />
-          </div>
-          <div class="form-group">
-            <label for="email">邮箱</label>
-            <input
-              type="email"
-              id="email"
-              v-model="form.email"
-              placeholder="请输入邮箱"
-              required
-            />
-          </div>
-          <div class="form-group">
-            <label for="password">密码</label>
-            <input
-              type="password"
-              id="password"
-              v-model="form.password"
-              placeholder="请输入密码"
-              required
-            />
-          </div>
-          <div class="form-group">
-            <label for="confirmPassword">确认密码</label>
-            <input
-              type="password"
-              id="confirmPassword"
-              v-model="form.confirmPassword"
-              placeholder="请再次输入密码"
-              required
-            />
-          </div>
-          <button type="submit" class="btn-register" :disabled="loading">
-            <span v-if="loading" class="spinner"></span>
-            <span v-else>注册</span>
-          </button>
-        </form>
+        <el-form @submit.prevent="handleRegister" class="register-form" :model="form">
+          <el-form-item label="姓名">
+            <el-input v-model="form.name" placeholder="请输入姓名" clearable />
+          </el-form-item>
+          <el-form-item label="账号">
+            <el-input v-model="form.account" type="account" placeholder="请输入邮箱" clearable />
+          </el-form-item>
+          <el-form-item label="密码">
+            <el-input v-model="form.password" type="password" placeholder="请输入密码" show-password />
+          </el-form-item>
+          <el-form-item label="确认密码">
+            <el-input v-model="form.confirmPassword" type="password" placeholder="请再次输入密码" show-password />
+          </el-form-item>
+          <el-alert v-if="error" :title="error" type="error" :closable="false" show-icon style="margin-bottom: 15px;" />
+          <el-form-item>
+            <el-button type="primary" @click="handleRegister" :loading="loading" style="width: 100%;">注册</el-button>
+          </el-form-item>
+        </el-form>
         <div class="register-footer">
           <p>已有账户？ <router-link to="/login">立即登录</router-link></p>
         </div>
@@ -62,42 +34,63 @@
 </template>
 
 <script>
+import { ElMessage } from 'element-plus'
+import authApi from '../../api/authApi'
+
 export default {
   name: 'Register',
   data() {
     return {
       form: {
-        username: '',
-        email: '',
+        name: '',
+        account: '',
         password: '',
         confirmPassword: ''
       },
-      loading: false
-    };
+      loading: false,
+      error: ''
+    }
   },
   methods: {
     async handleRegister() {
-      if (this.loading) return;
-      
-      if (this.form.password !== this.form.confirmPassword) {
-        alert('两次输入的密码不一致');
-        return;
+      if (this.loading) return
+
+      if (!this.form.name || !this.form.account || !this.form.password) {
+        ElMessage.warning('请填写完整信息')
+        return
       }
-      
-      this.loading = true;
+
+      if (this.form.password !== this.form.confirmPassword) {
+        this.error = '两次输入的密码不一致'
+        ElMessage.warning(this.error)
+        return
+      }
+
+      this.error = ''
+      this.loading = true
+
       try {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        alert('注册成功！请登录');
-        this.$router.push('/login');
+        const data = await authApi.register(this.form.name, this.form.account, this.form.password)
+
+        localStorage.setItem('token', data.token)
+        localStorage.setItem('user', JSON.stringify({
+          id: data.id,
+          name: data.name,
+          account: data.account
+        }))
+
+        ElMessage.success('注册成功！')
+        this.$router.push('/')
       } catch (error) {
-        console.error('注册失败:', error);
-        alert('注册失败，请重试');
+        console.error('注册失败:', error)
+        this.error = error.message || '注册失败，请重试'
+        ElMessage.error(this.error)
       } finally {
-        this.loading = false;
+        this.loading = false
       }
     }
   }
-};
+}
 </script>
 
 <style scoped>
@@ -108,6 +101,7 @@ export default {
   justify-content: center;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 20px;
+  width: 100%;
 }
 
 .register-container {
@@ -121,6 +115,7 @@ export default {
   padding: 40px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   animation: slideUp 0.6s ease-out;
+  width: 100%;
 }
 
 @keyframes slideUp {
@@ -128,6 +123,7 @@ export default {
     opacity: 0;
     transform: translateY(50px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -145,6 +141,7 @@ export default {
     opacity: 0;
     transform: scale(0.9);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -162,9 +159,11 @@ export default {
     opacity: 0;
     transform: scale(0);
   }
+
   50% {
     transform: scale(1.2);
   }
+
   100% {
     opacity: 1;
     transform: scale(1);
@@ -191,6 +190,7 @@ export default {
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -304,11 +304,11 @@ export default {
   .register-box {
     padding: 30px 20px;
   }
-  
+
   .register-header h2 {
     font-size: 24px;
   }
-  
+
   .logo-icon {
     font-size: 50px;
   }

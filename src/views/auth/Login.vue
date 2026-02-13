@@ -7,27 +7,21 @@
           <h2>欢迎回来</h2>
           <p>登录您的账户</p>
         </div>
-        <form @submit.prevent="handleLogin" class="login-form">
-          <div class="form-group">
-            <label for="email">账号</label>
-            <input type="email" id="email" v-model="form.admin" placeholder="请输入账号" required />
-          </div>
-          <div class="form-group">
-            <label for="password">密码</label>
-            <input type="password" id="password" v-model="form.password" placeholder="请输入密码" required />
-          </div>
-          <div class="form-options">
-            <label class="remember-me">
-              <input type="checkbox" v-model="form.remember" />
-              <span>记住我</span>
-            </label>
-          </div>
-          <div v-if="error" class="error-message">{{ error }}</div>
-          <button type="submit" class="btn-login" :disabled="loading">
-            <span v-if="loading" class="spinner"></span>
-            <span v-else>登录</span>
-          </button>
-        </form>
+        <el-form @submit.prevent="handleLogin" class="login-form" :model="form">
+          <el-form-item label="邮箱">
+            <el-input v-model="form.account" type="text" placeholder="请输入用户名" clearable />
+          </el-form-item>
+          <el-form-item label="密码">
+            <el-input v-model="form.password" type="password" placeholder="请输入密码" show-password />
+          </el-form-item>
+          <el-form-item>
+            <el-checkbox v-model="form.remember">记住我</el-checkbox>
+          </el-form-item>
+          <el-alert v-if="error" :title="error" type="error" :closable="false" show-icon style="margin-bottom: 15px;" />
+          <el-form-item>
+            <el-button type="primary" @click="handleLogin" :loading="loading" style="width: 100%;">登录</el-button>
+          </el-form-item>
+        </el-form>
         <div class="login-footer">
           <p>还没有账户？ <router-link to="/register">立即注册</router-link></p>
         </div>
@@ -37,48 +31,56 @@
 </template>
 
 <script>
-import authApi from '../../api/authApi';
+import { ElMessage } from 'element-plus'
+import authApi from '../../api/authApi'
 
 export default {
   name: 'Login',
   data() {
     return {
       form: {
-        admin: '',
+        account: '',
         password: '',
         remember: false
       },
       loading: false,
       error: ''
-    };
+    }
   },
   methods: {
     async handleLogin() {
-      if (this.loading) return;
+      if (this.loading) return
 
-      this.error = '';
-      this.loading = true;
+      if (!this.form.account || !this.form.password) {
+        ElMessage.warning('请输入邮箱和密码')
+        return
+      }
+
+      this.error = ''
+      this.loading = true
 
       try {
-        const data = await authApi.login(this.form.admin, this.form.password);
+        const data = await authApi.login(this.form.account, this.form.password)
 
-        localStorage.setItem('token', data.token);
+        localStorage.setItem('token', data.token)
         localStorage.setItem('user', JSON.stringify({
           id: data.id,
           name: data.name,
-          email: data.email
-        }));
+          account: data.account
+        }))
 
-        this.$router.push('/');
+        ElMessage.success('登录成功！')
+        this.$router.push('/')
       } catch (error) {
-        console.error('登录失败:', error);
-        this.error = error.message || '登录失败，请检查邮箱和密码';
+        console.error('登录失败:', error)
+        this.error = error.message || '登录失败，请检查邮箱和密码'
+        ElMessage.error(this.error)
       } finally {
-        this.loading = false;
+        this.loading = false
       }
     }
   }
-};
+}
 </script>
 
 <style scoped>

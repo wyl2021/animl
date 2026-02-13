@@ -2,62 +2,68 @@
   <div class="cat-community">
     <h2>猫咪社区</h2>
     <div class="action-bar">
-      <router-link to="/cats/add" class="btn btn-primary">分享猫咪</router-link>
+      <el-button type="primary" @click="$router.push('/cats/add')">分享猫咪</el-button>
     </div>
-    <div v-if="loading" class="loading">
-      <p>加载中...</p>
+    <div v-if="loading" style="text-align: center; padding: 3rem;">
+      <el-skeleton :rows="3" animated />
     </div>
     <div v-else>
-      <div class="cat-grid">
-        <div v-for="cat in cats" :key="cat.id" class="cat-card" @click="goToCatDetail(cat.id)">
-          <div class="cat-image">
-            <img :src="cat.image || '/vite.svg'" :alt="cat.name">
-          </div>
-          <div class="cat-info">
-            <div class="cat-header">
-              <h3>{{ cat.name }}</h3>
-              <span class="cat-breed">{{ cat.breed }}</span>
-            </div>
-            <p class="cat-description">{{ truncateDescription(cat.description) }}</p>
-            <div class="cat-stats">
-              <span class="cat-age">{{ cat.age }}岁</span>
-              <span class="cat-time">{{ formatDate(cat.created_at) }}</span>
-            </div>
-            <div class="cat-actions">
-              <button @click.stop="likeCat(cat.id)" class="action-btn like-btn" :class="{ 'liked': cat.liked, 'loading': likingCats.includes(cat.id) }">
-                <span class="icon">{{ cat.liked ? '❤️' : '🤍' }}</span>
-                <span>{{ cat.likes || 0 }}</span>
-              </button>
-              <button @click.stop="goToCatDetail(cat.id)" class="action-btn comment-btn">
-                <span class="icon">💬</span>
-                <span>{{ cat.comments || 0 }}</span>
-              </button>
-              <button @click.stop="goToCatDetail(cat.id)" class="action-btn view-btn">
-                <span class="icon">👁️</span>
-                <span>详情</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div v-if="cats.length === 0" class="empty-state">
-        <p>还没有猫咪分享，快来分享你的猫咪吧！</p>
-        <router-link to="/cats/add" class="btn btn-primary">分享第一只猫咪</router-link>
-      </div>
-      <!-- 分页控件 -->
-      <div v-if="totalPages > 1" class="pagination">
-        <button @click="changePage(1)" class="page-btn" :disabled="currentPage === 1">首页</button>
-        <button @click="changePage(currentPage - 1)" class="page-btn" :disabled="currentPage === 1">上一页</button>
-        <span class="page-info">第 {{ currentPage }} / {{ totalPages }} 页</span>
-        <button @click="changePage(currentPage + 1)" class="page-btn" :disabled="currentPage === totalPages">下一页</button>
-        <button @click="changePage(totalPages)" class="page-btn" :disabled="currentPage === totalPages">末页</button>
+      <el-row :gutter="20">
+        <el-col v-for="cat in cats" :key="cat.id" :xs="24" :sm="12" :md="8" :lg="6">
+          <el-card class="cat-card" shadow="hover" @click="goToCatDetail(cat.id)">
+            <template #cover>
+              <div class="cat-image">
+                <img :src="cat.image || '/vite.svg'" :alt="cat.name">
+              </div>
+            </template>
+            <el-card-body>
+              <div class="cat-header">
+                <h3>{{ cat.name }}</h3>
+                <el-tag size="small">{{ cat.breed }}</el-tag>
+              </div>
+              <p class="cat-description">{{ truncateDescription(cat.description) }}</p>
+              <div class="cat-stats">
+                <el-tag type="info" size="small">{{ cat.age }}岁</el-tag>
+                <span class="cat-time">{{ formatDate(cat.created_at) }}</span>
+              </div>
+              <div class="cat-actions">
+                <el-button 
+                  @click.stop="likeCat(cat.id)" 
+                  :type="cat.liked ? 'danger' : 'default'" 
+                  :loading="likingCats.includes(cat.id)"
+                  size="small"
+                  circle>
+                  {{ cat.liked ? '❤️' : '🤍' }} {{ cat.likes || 0 }}
+                </el-button>
+                <el-button @click.stop="goToCatDetail(cat.id)" size="small" circle>
+                  💬 {{ cat.comments || 0 }}
+                </el-button>
+                <el-button @click.stop="goToCatDetail(cat.id)" size="small">详情</el-button>
+              </div>
+            </el-card-body>
+          </el-card>
+        </el-col>
+      </el-row>
+      <el-empty v-if="cats.length === 0" description="还没有猫咪分享">
+        <el-button type="primary" @click="$router.push('/cats/add')">分享第一只猫咪</el-button>
+      </el-empty>
+      <div class="pagination-wrapper">
+        <el-pagination
+          v-if="totalPages > 1"
+          v-model:current-page="currentPage"
+          :page-size="pageSize"
+          :total="totalItems"
+          layout="prev, pager, next, jumper"
+          @current-change="fetchCats"
+        />
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import catApi from '../api/catApi';
+import { ElMessage } from 'element-plus'
+import catApi from '../api/catApi'
 
 export default {
   name: 'HomeView',
@@ -66,84 +72,79 @@ export default {
       cats: [],
       loading: true,
       currentPage: 1,
-      pageSize: 6,
+      pageSize: 8,
       totalPages: 1,
       totalItems: 0,
-      likingCats: [] // 正在点赞的猫咪ID列表，用于显示加载状态
-    };
+      likingCats: []
+    }
   },
   mounted() {
-    this.fetchCats();
+    this.fetchCats()
   },
   methods: {
     async fetchCats() {
       try {
-        this.loading = true;
-        const response = await catApi.getCats(this.currentPage, this.pageSize);
-        this.cats = response.data;
-        this.totalItems = response.total;
-        this.totalPages = response.totalPages;
+        this.loading = true
+        const response = await catApi.getCats(this.currentPage, this.pageSize)
+        this.cats = response.data
+        this.totalItems = response.total
+        this.totalPages = response.totalPages
       } catch (error) {
-        console.error('获取猫咪列表失败:', error);
+        console.error('获取猫咪列表失败:', error)
+        ElMessage.error('获取猫咪列表失败')
       } finally {
-        this.loading = false;
+        this.loading = false
       }
     },
     goToCatDetail(catId) {
-      this.$router.push(`/cats/${catId}`);
+      this.$router.push(`/cats/${catId}`)
     },
     truncateDescription(description) {
-      if (!description) return '';
-      return description.length > 100 ? description.substring(0, 100) + '...' : description;
+      if (!description) return ''
+      return description.length > 100 ? description.substring(0, 100) + '...' : description
     },
     formatDate(dateString) {
-      if (!dateString) return '';
-      const date = new Date(dateString);
-      const now = new Date();
-      const diffMs = now - date;
-      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-      const diffMinutes = Math.floor(diffMs / (1000 * 60));
+      if (!dateString) return ''
+      const date = new Date(dateString)
+      const now = new Date()
+      const diffMs = now - date
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+      const diffMinutes = Math.floor(diffMs / (1000 * 60))
       
       if (diffDays > 0) {
-        return `${diffDays}天前`;
+        return `${diffDays}天前`
       } else if (diffHours > 0) {
-        return `${diffHours}小时前`;
+        return `${diffHours}小时前`
       } else if (diffMinutes > 0) {
-        return `${diffMinutes}分钟前`;
+        return `${diffMinutes}分钟前`
       } else {
-        return '刚刚';
+        return '刚刚'
       }
     },
     async likeCat(catId) {
-      const cat = this.cats.find(c => c.id === catId);
-      if (!cat || this.likingCats.includes(catId)) return;
+      const cat = this.cats.find(c => c.id === catId)
+      if (!cat || this.likingCats.includes(catId)) return
       
       try {
-        this.likingCats.push(catId);
+        this.likingCats.push(catId)
         if (cat.liked) {
-          // 取消点赞
-          await catApi.unlikeCat(catId);
-          cat.likes--;
+          await catApi.unlikeCat(catId)
+          cat.likes--
         } else {
-          // 点赞
-          await catApi.likeCat(catId);
-          cat.likes++;
+          await catApi.likeCat(catId)
+          cat.likes++
         }
-        cat.liked = !cat.liked;
+        cat.liked = !cat.liked
       } catch (error) {
-        console.error('点赞操作失败:', error);
+        console.error('点赞操作失败:', error)
+        ElMessage.error('点赞操作失败')
       } finally {
-        this.likingCats = this.likingCats.filter(id => id !== catId);
+        this.likingCats = this.likingCats.filter(id => id !== catId)
       }
-    },
-    changePage(page) {
-      if (page < 1 || page > this.totalPages) return;
-      this.currentPage = page;
-      this.fetchCats();
     }
   }
-};
+}
 </script>
 
 <style scoped>

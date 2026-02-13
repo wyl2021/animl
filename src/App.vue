@@ -1,6 +1,6 @@
 <template>
   <div class="app">
-    <header class="header" :class="{ 'full-width': isFullWidthHeader }">
+    <header v-if="!isAuthPage" class="header" :class="{ 'full-width': isFullWidthHeader }">
       <div class="container">
         <h1 class="logo">
           <router-link to="/">🐱 猫咪乐园</router-link>
@@ -15,12 +15,13 @@
                 <span class="dropdown-icon">▼</span>
               </button>
               <div class="dropdown-menu" v-if="dropdowns.userDropdown">
-                <router-link to="/users">用户列表</router-link>
-                <router-link to="/users/add">添加用户</router-link>
+                <!-- <router-link to="/users">用户列表</router-link> -->
+                <!-- <router-link to="/users/add">添加用户</router-link> -->
+                <router-link to="/login" class="nav-btn">退出</router-link>
+                <!-- <router-link to="/register" class="nav-btn">注册</router-link> -->
               </div>
             </li>
-            <li><router-link to="/login" class="nav-btn">登录</router-link></li>
-            <li><router-link to="/register" class="nav-btn register-btn">注册</router-link></li>
+
           </ul>
         </nav>
       </div>
@@ -34,7 +35,7 @@
         </router-view>
       </div>
     </main>
-    <footer class="footer">
+    <footer v-if="!isAuthPage" class="footer">
       <div class="container">
         <p>&copy; 2026 猫咪乐园 - 所有权利保留</p>
       </div>
@@ -53,6 +54,9 @@ export default {
     };
   },
   computed: {
+    isAuthPage() {
+      return this.$route.meta.isAuthPage;
+    },
     isFullWidthHeader() {
       const currentPath = this.$route.path;
       return currentPath === '/' || currentPath.startsWith('/cats');

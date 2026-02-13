@@ -1,47 +1,36 @@
 <template>
   <div class="user-list">
-    <h2>用户管理</h2>
-    <div class="action-bar">
-      <router-link to="/users/add" class="btn btn-primary">添加用户</router-link>
-    </div>
-    <div v-if="loading" class="loading">
-      <p>加载中...</p>
-    </div>
-    <div v-else>
-      <div class="table-responsive">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>姓名</th>
-              <th>邮箱</th>
-              <th>创建时间</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="user in users" :key="user.id">
-              <td>{{ user.id }}</td>
-              <td>{{ user.name }}</td>
-              <td>{{ user.email }}</td>
-              <td>{{ formatDate(user.created_at) }}</td>
-              <td class="actions">
-                <router-link :to="`/users/edit/${user.id}`" class="btn btn-sm btn-edit">编辑</router-link>
-                <button @click="deleteUser(user.id)" class="btn btn-sm btn-delete">删除</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div v-if="users.length === 0" class="empty-state">
-        <p>暂无用户数据</p>
-      </div>
-    </div>
+    <el-card>
+      <template #header>
+        <div class="card-header">
+          <h2>用户管理</h2>
+          <el-button type="primary" @click="$router.push('/users/add')">添加用户</el-button>
+        </div>
+      </template>
+      <el-table v-loading="loading" :data="users" border stripe style="width: 100%">
+        <el-table-column prop="id" label="ID" width="80" />
+        <el-table-column prop="name" label="姓名" />
+        <el-table-column prop="email" label="邮箱" />
+        <el-table-column prop="created_at" label="创建时间" :formatter="formatDate" />
+        <el-table-column label="操作" width="180">
+          <template #default="scope">
+            <el-button size="small" type="primary" @click="$router.push('/users/edit/' + scope.row.id)">
+              编辑
+            </el-button>
+            <el-button size="small" type="danger" @click="deleteUser(scope.row.id)">
+              删除
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-empty v-if="!loading && users.length === 0" description="暂无用户数据" />
+    </el-card>
   </div>
 </template>
 
 <script>
-import userApi from '../../api/userApi';
+import { ElMessage, ElMessageBox } from 'element-plus'
+import userApi from '../../api/userApi'
 
 export default {
   name: 'UserList',
@@ -49,42 +38,47 @@ export default {
     return {
       users: [],
       loading: true
-    };
+    }
   },
   mounted() {
-    this.fetchUsers();
+    this.fetchUsers()
   },
   methods: {
     async fetchUsers() {
       try {
-        this.loading = true;
-        this.users = await userApi.getUsers();
+        this.loading = true
+        this.users = await userApi.getUsers()
       } catch (error) {
-        console.error('获取用户列表失败:', error);
-        alert('获取用户列表失败，请重试');
+        console.error('获取用户列表失败:', error)
+        ElMessage.error('获取用户列表失败，请重试')
       } finally {
-        this.loading = false;
+        this.loading = false
       }
     },
     async deleteUser(id) {
-      if (confirm('确定要删除该用户吗？')) {
-        try {
-          await userApi.deleteUser(id);
-          alert('用户删除成功');
-          this.fetchUsers(); // 重新获取用户列表
-        } catch (error) {
-          console.error('删除用户失败:', error);
-          alert('删除用户失败，请重试');
+      try {
+        await ElMessageBox.confirm('确定要删除该用户吗？', '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        })
+        await userApi.deleteUser(id)
+        ElMessage.success('用户删除成功')
+        this.fetchUsers()
+      } catch (error) {
+        if (error !== 'cancel') {
+          console.error('删除用户失败:', error)
+          ElMessage.error('删除用户失败，请重试')
         }
       }
     },
-    formatDate(dateString) {
-      if (!dateString) return '';
-      const date = new Date(dateString);
-      return date.toLocaleString('zh-CN');
+    formatDate(row, column, cellValue) {
+      if (!cellValue) return ''
+      const date = new Date(cellValue)
+      return date.toLocaleString('zh-CN')
     }
   }
-};
+}
 </script>
 
 <style scoped>
