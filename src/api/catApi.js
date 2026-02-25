@@ -6,18 +6,18 @@ const catApi = {
   createCat: async (catData) => {
     try {
       const formData = new FormData();
-      
+
       // 添加文本字段
       formData.append('name', catData.name);
       formData.append('breed', catData.breed || '');
       formData.append('age', catData.age || '');
       formData.append('description', catData.description || '');
-      
+
       // 添加图片文件（如果有）
       if (catData.image && typeof catData.image === 'object') {
         formData.append('image', catData.image);
       }
-      
+
       return await request('/cats', {
         method: 'POST',
         headers: {}, // 不设置Content-Type，让浏览器自动设置
@@ -34,19 +34,19 @@ const catApi = {
       };
     }
   },
-  
+
   // 获取所有猫咪
   getCats: async (page = 1, pageSize = 6) => {
     try {
       const cats = await request(`/cats?page=${page}&pageSize=${pageSize}`);
-      
+
       // 处理不同的响应结构
       let catsArray = [];
       let total = 0;
       let currentPage = page;
       let currentPageSize = pageSize;
       let totalPages = 1;
-      
+
       if (Array.isArray(cats)) {
         // 如果直接返回数组
         catsArray = cats;
@@ -66,7 +66,7 @@ const catApi = {
         currentPageSize = cats.pageSize || pageSize;
         totalPages = cats.totalPages || Math.ceil(total / currentPageSize);
       }
-      
+
       // 处理图片URL
       return {
         data: catsArray.map(cat => ({
@@ -89,7 +89,7 @@ const catApi = {
       };
     }
   },
-  
+
   // 获取单个猫咪
   getCat: async (id) => {
     try {
@@ -104,23 +104,68 @@ const catApi = {
       return null;
     }
   },
-  
+
+  // 获取热门猫咪
+  getHotCats: async () => {
+    try {
+      const cats = await request('/cats/public/hot');
+      // 处理图片URL
+      return Array.isArray(cats) ? cats.map(cat => ({
+        ...cat,
+        image: cat.image ? `${UPLOADS_BASE_URL}/${cat.image}` : null
+      })) : [];
+    } catch (error) {
+      console.warn('获取热门猫咪API不可用，返回空数据');
+      return [];
+    }
+  },
+
+  // 获取最新领养信息
+  getLatestAdoptions: async () => {
+    try {
+      const cats = await request('/cats/public/latest');
+      // 处理图片URL
+      return Array.isArray(cats) ? cats.map(cat => ({
+        ...cat,
+        image: cat.image ? `${UPLOADS_BASE_URL}/${cat.image}` : null
+      })) : [];
+    } catch (error) {
+      console.warn('获取最新领养信息API不可用，返回空数据');
+      return [];
+    }
+  },
+
+  // 获取猫咪详情（公开）
+  getPublicCatDetail: async (id) => {
+    try {
+      const cat = await request(`/cats/public/${id}`);
+      // 处理图片URL
+      return {
+        ...cat,
+        image: cat.image ? `${UPLOADS_BASE_URL}/${cat.image}` : null
+      };
+    } catch (error) {
+      console.warn('获取猫咪详情API不可用，返回空数据');
+      return null;
+    }
+  },
+
   // 更新猫咪（包含图片上传）
   updateCat: async (id, catData) => {
     try {
       const formData = new FormData();
-      
+
       // 添加文本字段
       formData.append('name', catData.name);
       formData.append('breed', catData.breed || '');
       formData.append('age', catData.age || '');
       formData.append('description', catData.description || '');
-      
+
       // 添加图片文件（如果有）
       if (catData.image && typeof catData.image === 'object') {
         formData.append('image', catData.image);
       }
-      
+
       return await request(`/cats/${id}`, {
         method: 'PUT',
         headers: {}, // 不设置Content-Type，让浏览器自动设置
@@ -135,7 +180,7 @@ const catApi = {
       };
     }
   },
-  
+
   // 删除猫咪
   deleteCat: async (id) => {
     try {
@@ -147,7 +192,7 @@ const catApi = {
       return { success: true, message: '删除成功' };
     }
   },
-  
+
   // 点赞猫咪
   likeCat: async (id) => {
     try {
@@ -159,7 +204,7 @@ const catApi = {
       return { success: true, message: '点赞成功' };
     }
   },
-  
+
   // 取消点赞猫咪
   unlikeCat: async (id) => {
     try {
@@ -171,7 +216,7 @@ const catApi = {
       return { success: true, message: '取消点赞成功' };
     }
   },
-  
+
   // 获取猫咪评论
   getComments: async (catId) => {
     try {
@@ -181,28 +226,117 @@ const catApi = {
       return [];
     }
   },
-  
+
   // 添加评论
-  addComment: async (catId, commentData) => {
+  addComment: async (catId, commentData, parentId = null) => {
     try {
-      return await request(`/cats/${catId}/comments`, {
+      return await request('/comments', {
         method: 'POST',
-        body: JSON.stringify(commentData)
+        body: JSON.stringify({
+          ...commentData,
+          cat_id: catId,
+          parent_id: parentId
+        })
       });
     } catch (error) {
       console.warn('添加评论API不可用，使用模拟数据');
-      return { 
+      return {
         id: Date.now(),
         ...commentData,
-        created_at: new Date().toISOString()
+        cat_id: catId,
+        parent_id: parentId,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        likes_count: 0,
+        user_name: commentData.user || '当前用户',
+        isLiked: false
       };
     }
   },
-  
-  // 删除评论
-  deleteComment: async (catId, commentId) => {
+
+  // 点赞评论
+  likeComment: async (commentId) => {
     try {
-      return await request(`/cats/${catId}/comments/${commentId}`, {
+      return await request(`/comments/${commentId}/like`, {
+        method: 'POST'
+      });
+    } catch (error) {
+      console.warn('点赞评论API不可用，使用模拟数据');
+      return { success: true, message: '点赞成功' };
+    }
+  },
+
+  // 取消点赞评论
+  unlikeComment: async (commentId) => {
+    try {
+      return await request(`/comments/${commentId}/like`, {
+        method: 'DELETE'
+      });
+    } catch (error) {
+      console.warn('取消点赞评论API不可用，使用模拟数据');
+      return { success: true, message: '取消点赞成功' };
+    }
+  },
+
+  // 更新评论
+  updateComment: async (commentId, content) => {
+    try {
+      return await request(`/comments/${commentId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ content })
+      });
+    } catch (error) {
+      console.warn('更新评论API不可用，使用模拟数据');
+      return {
+        id: commentId,
+        content,
+        updated_at: new Date().toISOString()
+      };
+    }
+  },
+
+  // 更新猫咪信息
+  updateCat: async (catId, catData) => {
+    let isFormData; // 在 try 外部定义
+
+    try {
+      isFormData = catData instanceof FormData;
+
+      const response = await request(`/cats/${catId}`, {
+        method: 'PUT',
+        body: isFormData ? catData : JSON.stringify(catData),
+        headers: isFormData ? {} : {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      return response;
+    } catch (error) {
+      console.warn('更新猫咪API不可用，使用模拟数据', error);
+
+      // 现在可以访问 isFormData 了
+      let mockData = { id: catId, updated_at: new Date().toISOString() };
+
+      if (isFormData) {
+        // 从 FormData 提取数据
+        for (let [key, value] of catData.entries()) {
+          if (key !== 'image') { // 排除图片文件
+            mockData[key] = value;
+          }
+        }
+      } else {
+        // 普通对象直接合并
+        mockData = { ...mockData, ...catData };
+      }
+
+      return mockData;
+    }
+  },
+
+  // 删除评论
+  deleteComment: async (commentId) => {
+    try {
+      return await request(`/comments/${commentId}`, {
         method: 'DELETE'
       });
     } catch (error) {

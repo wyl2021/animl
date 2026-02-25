@@ -10,23 +10,25 @@ async function request(endpoint, options = {}) {
 
   const token = getToken();
 
-  const defaultOptions = {
-    headers: {
-      'Content-Type': 'application/json'
-    }
+  const defaultHeaders = {
+    'Content-Type': 'application/json'
   };
 
-  const headers = {
-    ...defaultOptions.headers,
+  let headers = {
+    ...defaultHeaders,
     ...options.headers
   };
+
+  // 检查body是否为FormData类型，如果是，删除Content-Type头部
+  if (options.body && options.body instanceof FormData) {
+    delete headers['Content-Type'];
+  }
 
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
   const mergedOptions = {
-    ...defaultOptions,
     ...options,
     headers
   };

@@ -3,27 +3,24 @@
     <header v-if="!isAuthPage" class="header" :class="{ 'full-width': isFullWidthHeader }">
       <div class="container">
         <h1 class="logo">
-          <router-link to="/">🐱 猫咪乐园</router-link>
+          <router-link to="/">猫咪社区</router-link>
         </h1>
+        <div class="search-box">
+          <input type="text" placeholder="搜索猫咪...">
+          <span class="search-icon">🔍</span>
+        </div>
         <nav class="nav">
           <ul>
             <li><router-link to="/">首页</router-link></li>
-            <li><router-link to="/cats">猫咪管理</router-link></li>
-            <li class="dropdown">
-              <button class="dropdown-toggle" @click="toggleDropdown('userDropdown')">
-                用户管理
-                <span class="dropdown-icon">▼</span>
-              </button>
-              <div class="dropdown-menu" v-if="dropdowns.userDropdown">
-                <!-- <router-link to="/users">用户列表</router-link> -->
-                <!-- <router-link to="/users/add">添加用户</router-link> -->
-                <router-link to="/login" class="nav-btn">退出</router-link>
-                <!-- <router-link to="/register" class="nav-btn">注册</router-link> -->
-              </div>
-            </li>
-
+            <li><router-link to="/adopt">领养</router-link></li>
+            <li><router-link to="/interact">互动</router-link></li>
+            <li><router-link to="/encyclopedia">百科</router-link></li>
           </ul>
         </nav>
+        <div class="user-area">
+          <span class="notification">🔔</span>
+          <span class="user-avatar">👩</span>
+        </div>
       </div>
     </header>
     <main class="main">
@@ -37,7 +34,11 @@
     </main>
     <footer v-if="!isAuthPage" class="footer">
       <div class="container">
-        <p>&copy; 2026 猫咪乐园 - 所有权利保留</p>
+        <div class="footer-links">
+          <a href="#">关于我们</a>
+          <a href="#">联系客服</a>
+          <a href="#">隐私政策</a>
+        </div>
       </div>
     </footer>
   </div>
@@ -89,11 +90,11 @@ body {
   font-family: 'Arial', sans-serif;
   line-height: 1.6;
   color: #333;
-  background-color: #f5f5f5;
+  background-color: #fff5f7;
 }
 
 .container {
-  /* max-width: 1200px; */
+  max-width: 1200px;
   margin: 0 auto;
   padding: 0 20px;
   display: flex;
@@ -103,8 +104,7 @@ body {
 }
 
 .header {
-  background-color: #fff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background-color: #ffd6e0;
   padding: 1rem 0;
   position: sticky;
   top: 0;
@@ -113,15 +113,14 @@ body {
 }
 
 .header.full-width {
-  width: 95vw;
-  /* max-width: 100vw; */
+  width: 100%;
   margin: 0;
   left: 0;
   right: 0;
 }
 
 .header.full-width .container {
-  max-width: 100%;
+  max-width: 1200px;
   padding: 0 20px;
 }
 
@@ -129,11 +128,34 @@ body {
   font-size: 1.8rem;
   font-weight: bold;
   margin-bottom: 0;
+  color: #e63946;
 }
 
 .logo a {
-  color: #333;
+  color: #e63946;
   text-decoration: none;
+}
+
+.search-box {
+  position: relative;
+  width: 300px;
+}
+
+.search-box input {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  border: none;
+  border-radius: 20px;
+  font-size: 1rem;
+  outline: none;
+}
+
+.search-icon {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #999;
 }
 
 .nav ul {
@@ -153,107 +175,23 @@ body {
 }
 
 .nav a:hover {
-  color: #4CAF50;
+  color: #e63946;
 }
 
-/* 下拉菜单样式 */
-.dropdown {
-  position: relative;
-}
-
-.dropdown-toggle {
-  background: none;
-  border: none;
-  color: #333;
-  font-weight: 500;
-  font-size: 1rem;
-  cursor: pointer;
+.user-area {
   display: flex;
   align-items: center;
-  gap: 0.3rem;
-  padding: 0.5rem 0;
-  transition: color 0.3s ease;
-  outline: none;
+  gap: 1rem;
 }
 
-.dropdown-toggle:focus {
-  outline: none;
-}
-
-.dropdown-toggle:hover {
-  color: #4CAF50;
-}
-
-.dropdown-icon {
-  font-size: 0.8rem;
-  transition: transform 0.3s ease;
-}
-
-.dropdown:hover .dropdown-icon {
-  transform: rotate(180deg);
-}
-
-.dropdown-menu {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  background-color: #fff;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  border-radius: 8px;
-  padding: 0.5rem 0;
-  min-width: 150px;
-  margin-top: 0.5rem;
-  z-index: 1000;
-  animation: dropdownFade 0.3s ease;
-}
-
-.dropdown-menu a {
-  padding: 0.8rem 1.2rem;
-  color: #333;
-  text-decoration: none;
-  display: block;
-  transition: all 0.3s ease;
-}
-
-.dropdown-menu a:hover {
-  background-color: #f5f5f5;
-  color: #4CAF50;
-  padding-left: 1.5rem;
-}
-
-@keyframes dropdownFade {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.nav-btn {
-  padding: 0.5rem 1.2rem;
-  border-radius: 20px;
-  text-decoration: none;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  border: none;
+.notification {
+  font-size: 1.2rem;
   cursor: pointer;
 }
 
-.nav-btn:hover {
-  transform: translateY(-2px);
-}
-
-.register-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white !important;
-}
-
-.register-btn:hover {
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+.user-avatar {
+  font-size: 1.5rem;
+  cursor: pointer;
 }
 
 .main {
@@ -262,11 +200,26 @@ body {
 }
 
 .footer {
-  background-color: #333;
-  color: #fff;
-  text-align: center;
+  background-color: #ffd6e0;
+  color: #333;
   padding: 1.5rem 0;
   margin-top: 2rem;
+}
+
+.footer-links {
+  display: flex;
+  justify-content: space-around;
+  width: 100%;
+}
+
+.footer-links a {
+  color: #333;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.footer-links a:hover {
+  color: #e63946;
 }
 
 /* 路由过渡动画 */
@@ -297,7 +250,7 @@ body {
   width: 20px;
   height: 20px;
   border: 2px solid #f3f3f3;
-  border-top: 2px solid #4CAF50;
+  border-top: 2px solid #e63946;
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-left: 10px;
@@ -352,6 +305,19 @@ body {
 }
 
 /* 响应式设计 */
+@media (max-width: 1200px) {
+  .container {
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .search-box {
+    order: -1;
+    width: 100%;
+    max-width: 400px;
+  }
+}
+
 @media (max-width: 768px) {
   .container {
     flex-direction: column;
@@ -365,13 +331,18 @@ body {
     gap: 1rem;
   }
 
-  .dropdown-menu {
-    right: 50%;
-    transform: translateX(50%);
-  }
-
   .logo {
     font-size: 1.5rem;
+  }
+
+  .search-box {
+    width: 100%;
+    max-width: 300px;
+  }
+
+  .footer-links {
+    flex-direction: column;
+    gap: 0.5rem;
   }
 }
 
@@ -382,10 +353,6 @@ body {
   }
 
   .nav a {
-    padding: 0.3rem 0;
-  }
-
-  .dropdown-toggle {
     padding: 0.3rem 0;
   }
 }
