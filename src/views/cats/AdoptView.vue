@@ -85,6 +85,16 @@ export default {
   mounted() {
     this.fetchCats()
   },
+  watch: {
+    // 当路由变化时重新加载数据
+    $route: {
+      handler() {
+        this.fetchCats()
+      },
+      // 深度监听
+      deep: true
+    }
+  },
   methods: {
     async fetchCats() {
       try {
@@ -199,9 +209,9 @@ h2 {
 }
 
 .cat-img {
-  width: 240px;
+  width: 100%;
   height: 150px;
-  object-fit: cover;
+  /* object-fit: cover; */
   transition: all 0.3s ease;
   border-radius: 12px 12px 0 0;
 }
@@ -348,7 +358,14 @@ h2 {
   margin: 0 0 1rem 0;
   color: #666;
   line-height: 1.5;
+  height: 72px;
   flex: 1;
+  text-align: left;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .cat-stats {

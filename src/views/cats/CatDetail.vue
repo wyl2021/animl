@@ -199,10 +199,10 @@
         </div>
       </div>
     </div>
-    <div v-else class="error">
+    <!-- <div v-else class="error">
       <p>猫咪信息加载失败</p>
       <router-link to="/cats" class="btn btn-secondary">返回社区</router-link>
-    </div>
+    </div> -->
   </div>
 
   <!-- 编辑弹框 -->
@@ -588,8 +588,8 @@ export default {
       if (image.startsWith('http') || image.startsWith('data:image')) {
         return image;
       }
-      // 否则拼接上传路径
-      return `/uploads/${image}`;
+      // 否则拼接完整的上传路径
+      return `http://localhost:3000/uploads/${image}`;
     },
 
     // 保存猫咪信息
@@ -622,7 +622,9 @@ export default {
         // 更新本地数据
         this.cat = {
           ...this.cat,
-          ...updatedCat
+          ...updatedCat,
+          // 确保image字段有正确的域名前缀
+          image: this.getImageUrl(updatedCat.image)
         };
 
         // 关闭弹框

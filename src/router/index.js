@@ -61,6 +61,16 @@ const router = createRouter({
       path: '/adopt',
       name: 'adopt',
       component: () => import('../views/cats/AdoptView.vue')
+    },
+    {
+      path: '/interact',
+      name: 'interact',
+      component: () => import('../views/cats/interactView.vue')
+    },
+    {
+      path: '/posts/:id',
+      name: 'postDetail',
+      component: () => import('../views/posts/PostDetail.vue')
     }
   ]
 })
