@@ -343,6 +343,87 @@ const catApi = {
       console.warn('删除评论API不可用，使用模拟数据');
       return { success: true, message: '删除成功' };
     }
+  },
+
+  // 猫咪百科API
+  // 获取百科列表
+  getEncyclopedias: async (page = 1, limit = 10, breed = '') => {
+    try {
+      let endpoint = `/encyclopedias?page=${page}&limit=${limit}`;
+      if (breed) {
+        endpoint += `&breed=${encodeURIComponent(breed)}`;
+      }
+
+      return await request(endpoint);
+    } catch (error) {
+      console.warn('获取百科列表API不可用，返回空数据', error);
+      return {
+        encyclopedias: [],
+        pagination: {
+          page: 1,
+          limit: 10,
+          total: 0,
+          totalPages: 0
+        }
+      };
+    }
+  },
+
+  // 获取百科详情
+  getEncyclopediaById: async (id) => {
+    try {
+      return await request(`/encyclopedias/${id}`);
+    } catch (error) {
+      console.warn('获取百科详情API不可用，返回空数据');
+      return null;
+    }
+  },
+
+  // 创建百科
+  createEncyclopedia: async (encyclopediaData) => {
+    try {
+      return await request('/encyclopedias', {
+        method: 'POST',
+        body: JSON.stringify(encyclopediaData)
+      });
+    } catch (error) {
+      console.warn('创建百科API不可用，使用模拟数据');
+      return {
+        id: Date.now(),
+        ...encyclopediaData,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+    }
+  },
+
+  // 更新百科
+  updateEncyclopedia: async (id, encyclopediaData) => {
+    try {
+      return await request(`/encyclopedias/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(encyclopediaData)
+      });
+    } catch (error) {
+      console.warn('更新百科API不可用，使用模拟数据');
+      return {
+        id: id,
+        ...encyclopediaData,
+        updated_at: new Date().toISOString()
+      };
+    }
+  },
+
+  // 删除百科
+  deleteEncyclopedia: async (id) => {
+    try {
+      return await request(`/encyclopedias/${id}`, {
+        method: 'DELETE'
+      });
+    } catch (error) {
+      console.warn('删除百科API不可用，使用模拟数据');
+      return { message: 'Encyclopedia deleted successfully' };
+    }
   }
 };
 
