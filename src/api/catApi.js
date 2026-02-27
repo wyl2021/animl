@@ -278,6 +278,40 @@ const catApi = {
     }
   },
 
+  // 获取用户发布的猫咪（领养）
+  getMyCats: async (page = 1, pageSize = 8) => {
+    try {
+      const response = await request(`/cats/my?page=${page}&pageSize=${pageSize}`);
+      return response;
+    } catch (error) {
+      console.warn('获取用户发布的猫咪API不可用，使用模拟数据');
+      return {
+        data: [],
+        total: 0,
+        totalPages: 1
+      };
+    }
+  },
+
+  // 获取用户发布的帖子（互动）
+  getMyPosts: async (page = 1, pageSize = 10) => {
+    try {
+      const response = await request(`/posts/my?page=${page}&pageSize=${pageSize}`);
+      return response;
+    } catch (error) {
+      console.warn('获取用户发布的帖子API不可用，使用模拟数据');
+      return {
+        posts: [],
+        pagination: {
+          page: 1,
+          limit: 10,
+          total: 0,
+          totalPages: 0
+        }
+      };
+    }
+  },
+
   // 更新评论
   updateComment: async (commentId, content) => {
     try {
@@ -500,21 +534,21 @@ const catApi = {
     try {
       // 创建FormData对象
       const formData = new FormData();
-      
+
       // 添加文本字段
       formData.append('name', userForm.name || '');
       formData.append('account', userForm.account || '');
-      
+
       // 只有当密码不为空时才添加密码
       if (userForm.password) {
         formData.append('password', userForm.password);
       }
-      
+
       // 只有当头像文件存在时才添加头像
       if (userForm.avatarFile) {
         formData.append('avatar', userForm.avatarFile);
       }
-      
+
       // 调用API更新用户信息（使用新的接口地址）
       return await request(`/users/${id}/image`, {
         method: 'PUT',

@@ -1,63 +1,93 @@
 <template>
   <div class="adopt-view">
     <h2>猫咪领养</h2>
-    <!-- <div class="action-bar">
+    <div class="action-bar">
       <el-button type="primary" @click="$router.push('/cats/add')">分享猫咪</el-button>
-    </div> -->
-    <div v-if="loading" style="text-align: center; padding: 3rem;">
-      <el-skeleton :rows="3" animated />
+      <el-button type="info" @click="toggleMyAdoptions">我的领养</el-button>
     </div>
-    <div v-else-if="error" class="error-state">
-      <p>{{ error }}</p>
-      <el-button @click="fetchCats">重试</el-button>
-    </div>
-    <div v-else>
-      <el-row :gutter="20">
-        <el-col v-for="cat in cats" :key="cat.id" :xs="24" :sm="12" :md="8" :lg="6">
-          <el-card class="cat-card" shadow="hover" @click="goToCatDetail(cat.id)">
-            <template #cover>
-              <!-- <div class="cat-image">
-                <img :src="cat.image || '/vite.svg'" :alt="cat.name" class="cat-img"
-                  @error="handleImageError($event, cat)" @loadstart="handleImageLoadStart(cat)"
-                  @load="handleImageLoad(cat)" />
-                <div v-if="loadingImages.includes(cat.id)" class="image-loading">
-                  <el-icon class="is-loading">
-                    <Loading />
-                  </el-icon>
-                </div>
-              </div> -->
-            </template>
-            <el-card-body>
-              <el-image :src="cat.image || '/vite.svg'" :alt="cat.name" class="cat-img"
-                @error="handleImageError($event, cat)" @loadstart="handleImageLoadStart(cat)"
-                @load="handleImageLoad(cat)"></el-image>
-              <div class="cat-header">
-                <h3>{{ cat.name }}</h3>
-                <el-tag size="small">{{ cat.breed }}</el-tag>
-              </div>
-              <p class="cat-description">{{ truncateDescription(cat.description) }}</p>
-              <div class="cat-stats">
-                <el-tag type="info" size="small">{{ cat.age }}岁</el-tag>
-                <span class="cat-time">{{ formatDate(cat.created_at) }}</span>
-              </div>
-              <div class="cat-actions">
-                <el-button @click.stop="likeCat(cat.id)" :type="cat.isLiked ? 'danger' : 'default'"
-                  :loading="likingCats.includes(cat.id)" size="small">
-                  {{ cat.isLiked ? '已点赞' : '点赞' }} {{ cat.likes || 0 }}
-                </el-button>
-                <el-button @click.stop="goToCatDetail(cat.id)" size="small">详情</el-button>
-              </div>
-            </el-card-body>
-          </el-card>
-        </el-col>
-      </el-row>
-      <div v-if="cats.length === 0" class="empty-state">
-        <p>暂无猫咪信息</p>
-        <el-button type="primary" @click="$router.push('/cats/add')">分享第一只猫咪</el-button>
+    <!-- 我的领养表格 -->
+    <div v-if="showMyAdoptions" class="my-adoptions-section">
+      <h3>我的领养</h3>
+      <div v-if="loadingMyAdoptions" style="text-align: center; padding: 3rem;">
+        <el-skeleton :rows="3" animated />
       </div>
-      <div class="pagination-wrapper">
-        <el-pagination v-if="totalPages > 1" v-model:current-page="currentPage" :page-size="pageSize"
-          :total="totalItems" layout="prev, pager, next, jumper" @current-change="fetchCats" />
+      <div v-else-if="errorMyAdoptions" class="error-state">
+        <p>{{ errorMyAdoptions }}</p>
+        <el-button @click="fetchMyCats">重试</el-button>
+      </div>
+      <div v-else>
+        <el-table :data="myCats" style="width: 100%">
+          <el-table-column prop="name" label="猫咪名称" width="180" />
+          <el-table-column prop="breed" label="品种" width="120" />
+          <el-table-column prop="age" label="年龄" width="80" />
+          <el-table-column prop="description" label="描述" show-overflow-tooltip />
+          <el-table-column prop="created_at" label="发布时间" width="180">
+            <template #default="scope">
+              {{ formatDate(scope.row.created_at) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="150">
+            <template #default="scope">
+              <el-button size="small" @click="goToCatDetail(scope.row.id)">详情</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <div v-if="myCats.length === 0" class="empty-state">
+          <p>暂无领养信息</p>
+        </div>
+        <div class="pagination-wrapper">
+          <el-pagination v-if="myTotalPages > 1" v-model:current-page="myCurrentPage" :page-size="myPageSize"
+            :total="myTotalItems" layout="prev, pager, next, jumper" @current-change="fetchMyCats" />
+        </div>
+      </div>
+    </div>
+    <!-- 猫咪列表 -->
+    <div v-else>
+      <div v-if="loading" style="text-align: center; padding: 3rem;">
+        <el-skeleton :rows="3" animated />
+      </div>
+      <div v-else-if="error" class="error-state">
+        <p>{{ error }}</p>
+        <el-button @click="fetchCats">重试</el-button>
+      </div>
+      <div v-else>
+        <el-row :gutter="20">
+          <el-col v-for="cat in cats" :key="cat.id" :xs="24" :sm="12" :md="8" :lg="6">
+            <el-card class="cat-card" shadow="hover" @click="goToCatDetail(cat.id)">
+              <template #cover>
+              </template>
+              <el-card-body>
+                <el-image :src="cat.image || '/vite.svg'" :alt="cat.name" class="cat-img"
+                  @error="handleImageError($event, cat)" @loadstart="handleImageLoadStart(cat)"
+                  @load="handleImageLoad(cat)"></el-image>
+                <div class="cat-header">
+                  <h3>{{ cat.name }}</h3>
+                  <el-tag size="small">{{ cat.breed }}</el-tag>
+                </div>
+                <p class="cat-description">{{ truncateDescription(cat.description) }}</p>
+                <div class="cat-stats">
+                  <el-tag type="info" size="small">{{ cat.age }}岁</el-tag>
+                  <span class="cat-time">{{ formatDate(cat.created_at) }}</span>
+                </div>
+                <div class="cat-actions">
+                  <el-button @click.stop="likeCat(cat.id)" :type="cat.isLiked ? 'danger' : 'default'"
+                    :loading="likingCats.includes(cat.id)" size="small">
+                    {{ cat.isLiked ? '已点赞' : '点赞' }} {{ cat.likes || 0 }}
+                  </el-button>
+                  <el-button @click.stop="goToCatDetail(cat.id)" size="small">详情</el-button>
+                </div>
+              </el-card-body>
+            </el-card>
+          </el-col>
+        </el-row>
+        <div v-if="cats.length === 0" class="empty-state">
+          <p>暂无猫咪信息</p>
+          <el-button type="primary" @click="$router.push('/cats/add')">分享第一只猫咪</el-button>
+        </div>
+        <div class="pagination-wrapper">
+          <el-pagination v-if="totalPages > 1" v-model:current-page="currentPage" :page-size="pageSize"
+            :total="totalItems" layout="prev, pager, next, jumper" @current-change="fetchCats" />
+        </div>
       </div>
     </div>
   </div>
@@ -79,7 +109,16 @@ export default {
       totalPages: 1,
       totalItems: 0,
       likingCats: [],
-      loadingImages: []
+      loadingImages: [],
+      // 我的领养相关
+      showMyAdoptions: false,
+      myCats: [],
+      loadingMyAdoptions: false,
+      errorMyAdoptions: '',
+      myCurrentPage: 1,
+      myPageSize: 8,
+      myTotalPages: 1,
+      myTotalItems: 0
     }
   },
   mounted() {
@@ -96,6 +135,30 @@ export default {
     }
   },
   methods: {
+    // 切换我的领养视图
+    toggleMyAdoptions() {
+      this.showMyAdoptions = !this.showMyAdoptions
+      if (this.showMyAdoptions) {
+        this.fetchMyCats()
+      }
+    },
+    // 获取用户发布的猫咪
+    async fetchMyCats() {
+      try {
+        this.loadingMyAdoptions = true
+        this.errorMyAdoptions = ''
+        const response = await catApi.getMyCats(this.myCurrentPage, this.myPageSize)
+        this.myCats = response.data
+        this.myTotalItems = response.total
+        this.myTotalPages = response.totalPages
+      } catch (error) {
+        console.error('获取我的领养失败:', error)
+        this.errorMyAdoptions = '获取我的领养失败'
+        ElMessage.error('获取我的领养失败')
+      } finally {
+        this.loadingMyAdoptions = false
+      }
+    },
     async fetchCats() {
       try {
         this.loading = true
