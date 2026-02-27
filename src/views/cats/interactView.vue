@@ -1,10 +1,47 @@
 <template>
     <div class="interact-view">
-        <!-- 发布帖子按钮 -->
-        <el-button type="primary" class="create-post-btn" @click="showCreatePostModal = true">发布帖子</el-button>
+        <!-- 操作按钮 -->
+        <div class="action-bar">
+            <el-button type="primary" class="create-post-btn" @click="showCreatePostModal = true">发布帖子</el-button>
+            <el-button type="info" @click="toggleMyInteractions">我的互动</el-button>
+        </div>
+
+        <!-- 我的互动表格 -->
+        <div v-if="showMyInteractions" class="my-interactions-section">
+            <!-- <h3>我的互动</h3> -->
+            <div v-if="loadingMyPosts" style="text-align: center; padding: 3rem;">
+                <el-skeleton :rows="3" animated />
+            </div>
+            <div v-else-if="errorMyPosts" class="error-state">
+                <p>{{ errorMyPosts }}</p>
+                <el-button @click="fetchMyPosts">重试</el-button>
+            </div>
+            <div v-else>
+                <el-table :data="myPosts" style="width: 100%">
+                    <el-table-column prop="title" label="帖子标题" show-overflow-tooltip />
+                    <el-table-column prop="content" label="内容" show-overflow-tooltip />
+                    <el-table-column prop="created_at" label="发布时间" width="180">
+                        <template #default="scope">
+                            {{ formatDate(scope.row.created_at) }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="likes_count" label="点赞数" width="100" />
+                    <el-table-column prop="comments_count" label="评论数" width="100" />
+                    <el-table-column label="操作" width="150">
+                        <template #default="scope">
+                            <el-button size="small" @click="goToPostDetail(scope.row)">详情</el-button>
+                        </template>
+                    </el-table-column>
+                </el-table>
+                <div class="pagination-wrapper">
+                    <el-pagination v-if="myTotalPages > 1" v-model:current-page="myCurrentPage" :page-size="myPageSize"
+                        :total="myTotalItems" layout="prev, pager, next, jumper" @current-change="fetchMyPosts" />
+                </div>
+            </div>
+        </div>
 
         <!-- 帖子列表 -->
-        <div class="posts-container">
+        <div v-else class="posts-container">
             <el-card v-for="post in posts" :key="post.id" class="post-card" @click="goToPostDetail(post)">
                 <el-card-header>
                     <div class="post-header">
@@ -176,6 +213,7 @@
 <script>
 import { ElMessage } from 'element-plus'
 import { Star, ChatDotRound, More } from '@element-plus/icons-vue'
+import catApi from '../../api/catApi'
 
 export default {
     name: 'InteractView',
@@ -210,7 +248,22 @@ export default {
             cats: [],
 
             // 加载状态
-            loading: false
+            loading: false,
+            // 我的互动相关
+            showMyInteractions: false,
+            myPosts: [],
+            loadingMyPosts: false,
+            errorMyPosts: '',
+            myCurrentPage: 1,
+            myPageSize: 10,
+            myTotalPages: 1,
+            myTotalItems: 0
+        }
+    },
+    computed: {
+        // 为了保持模板兼容性
+        totalItems() {
+            return this.totalPosts
         }
     },
     mounted() {
@@ -218,6 +271,30 @@ export default {
         this.fetchCats()
     },
     methods: {
+        // 切换我的互动视图
+        toggleMyInteractions() {
+            this.showMyInteractions = !this.showMyInteractions
+            if (this.showMyInteractions) {
+                this.fetchMyPosts()
+            }
+        },
+        // 获取用户发布的帖子
+        async fetchMyPosts() {
+            try {
+                this.loadingMyPosts = true
+                this.errorMyPosts = ''
+                const response = await catApi.getMyPosts(this.myCurrentPage, this.myPageSize)
+                this.myPosts = response.posts
+                this.myTotalItems = response.pagination.total
+                this.myTotalPages = response.pagination.totalPages
+            } catch (error) {
+                console.error('获取我的互动失败:', error)
+                this.errorMyPosts = '获取我的互动失败'
+                ElMessage.error('获取我的互动失败')
+            } finally {
+                this.loadingMyPosts = false
+            }
+        },
         // 获取帖子列表
         async fetchPosts() {
             this.loading = true
@@ -615,6 +692,10 @@ h2 {
 }
 
 .create-post-btn {
+    /* margin-bottom: 2rem; */
+}
+
+.action-bar {
     margin-bottom: 2rem;
 }
 

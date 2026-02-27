@@ -1,13 +1,22 @@
 <template>
   <div class="adopt-view">
-    <h2>猫咪领养</h2>
+    <!-- <h2>猫咪领养</h2> -->
     <div class="action-bar">
-      <el-button type="primary" @click="$router.push('/cats/add')">分享猫咪</el-button>
-      <el-button type="info" @click="toggleMyAdoptions">我的领养</el-button>
+      <!-- <el-button type="primary" @click="$router.push('/cats/add')">分享猫咪</el-button> -->
+      <el-button type="info" @click="toggleMyAdoptions">{{ isAdmin ? '领养列表' : '我的领养' }}</el-button>
     </div>
     <!-- 我的领养表格 -->
     <div v-if="showMyAdoptions" class="my-adoptions-section">
-      <h3>我的领养</h3>
+      <div class="section-header">
+        <div class="header-actions">
+          <el-select v-model="selectedStatus" placeholder="选择状态" style="width: 120px; margin-right: 10px;"
+            @change="fetchMyCats">
+            <el-option v-for="option in statusOptions" :key="option.value" :label="option.label"
+              :value="option.value" />
+          </el-select>
+          <el-button v-if="!isAdmin" type="primary" @click="showCreateCatModal = true">创建猫咪</el-button>
+        </div>
+      </div>
       <div v-if="loadingMyAdoptions" style="text-align: center; padding: 3rem;">
         <el-skeleton :rows="3" animated />
       </div>
@@ -26,13 +35,34 @@
               {{ formatDate(scope.row.created_at) }}
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="150">
+          <el-table-column prop="adoption_status" label="状态" width="100">
+            <template #default="scope">
+              <el-tag :type="getStatusType(scope.row.adoption_status)">{{ getStatusText(scope.row.adoption_status)
+                }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="rejection_reason" label="驳回理由" show-overflow-tooltip />
+
+          <el-table-column label="操作" width="200">
             <template #default="scope">
               <el-button size="small" @click="goToCatDetail(scope.row.id)">详情</el-button>
+              <template v-if="isAdmin">
+                <template v-if="scope.row.status === 'approved'">
+                  <el-button size="small" type="danger" @click="deleteCat(scope.row.id)">删除</el-button>
+                </template>
+                <template v-else>
+                  <el-button size="small" type="success" @click="approveCat(scope.row.id)">通过</el-button>
+                  <el-button size="small" type="danger" @click="rejectCat(scope.row.id)">驳回</el-button>
+                </template>
+              </template>
+              <template v-else>
+                <el-button size="small" type="primary" @click="editCat(scope.row)">编辑</el-button>
+                <el-button size="small" type="danger" @click="deleteCat(scope.row.id)">删除</el-button>
+              </template>
             </template>
           </el-table-column>
         </el-table>
-        <div v-if="myCats.length === 0" class="empty-state">
+        <div v-if="!myCats || myCats.length === 0" class="empty-state">
           <p>暂无领养信息</p>
         </div>
         <div class="pagination-wrapper">
@@ -80,7 +110,7 @@
             </el-card>
           </el-col>
         </el-row>
-        <div v-if="cats.length === 0" class="empty-state">
+        <div v-if="!cats || cats.length === 0" class="empty-state">
           <p>暂无猫咪信息</p>
           <el-button type="primary" @click="$router.push('/cats/add')">分享第一只猫咪</el-button>
         </div>
@@ -90,11 +120,94 @@
         </div>
       </div>
     </div>
+
+    <!-- 创建猫咪弹窗 -->
+    <el-dialog title="创建猫咪" v-model="showCreateCatModal" width="500px">
+      <el-form :model="catForm" :rules="catFormRules" ref="catFormRef" label-width="80px">
+        <el-form-item label="猫咪名字" prop="name">
+          <el-input v-model="catForm.name" placeholder="请输入猫咪名字" />
+        </el-form-item>
+        <el-form-item label="品种" prop="breed">
+          <el-input v-model="catForm.breed" placeholder="请输入品种" />
+        </el-form-item>
+        <el-form-item label="年龄" prop="age">
+          <el-input type="number" v-model="catForm.age" placeholder="请输入年龄" />
+        </el-form-item>
+        <el-form-item label="年龄显示" prop="age_display">
+          <el-input v-model="catForm.age_display" placeholder="如：2岁" />
+        </el-form-item>
+        <el-form-item label="描述" prop="description">
+          <el-input type="textarea" v-model="catForm.description" placeholder="请输入描述" />
+        </el-form-item>
+        <el-form-item label="领养要求" prop="adoption_requirements">
+          <el-input type="textarea" v-model="catForm.adoption_requirements" placeholder="请输入领养要求" />
+        </el-form-item>
+        <el-form-item label="图片">
+          <el-upload class="avatar-uploader" :show-file-list="false" :on-change="handleImageUpload"
+            :before-upload="beforeUpload" :auto-upload="false" accept="image/*">
+            <img v-if="catForm.imagePreview" :src="catForm.imagePreview" class="avatar">
+            <i v-else class="el-icon-plus avatar-uploader-icon"></i>
+          </el-upload>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="showCreateCatModal = false">取消</el-button>
+          <el-button type="primary" :loading="submitting" @click="submitCreateCat">确定</el-button>
+        </span>
+      </template>
+    </el-dialog>
+
+    <!-- 编辑猫咪弹窗 -->
+    <el-dialog title="编辑猫咪" v-model="showEditCatModal" width="500px">
+      <el-form :model="catForm" :rules="catFormRules" ref="catFormRef" label-width="80px">
+        <el-form-item label="猫咪名字" prop="name">
+          <el-input v-model="catForm.name" placeholder="请输入猫咪名字" />
+        </el-form-item>
+        <el-form-item label="品种" prop="breed">
+          <el-input v-model="catForm.breed" placeholder="请输入品种" />
+        </el-form-item>
+        <el-form-item label="年龄" prop="age">
+          <el-input type="number" v-model="catForm.age" placeholder="请输入年龄" />
+        </el-form-item>
+        <el-form-item label="年龄显示" prop="age_display">
+          <el-input v-model="catForm.age_display" placeholder="如：2岁" />
+        </el-form-item>
+        <el-form-item label="描述" prop="description">
+          <el-input type="textarea" v-model="catForm.description" placeholder="请输入描述" />
+        </el-form-item>
+        <el-form-item label="领养状态">
+          <el-input v-model="catForm.adoption_status" placeholder="请输入领养状态" />
+        </el-form-item>
+        <el-form-item label="领养要求" prop="adoption_requirements">
+          <el-input type="textarea" v-model="catForm.adoption_requirements" placeholder="请输入领养要求" />
+        </el-form-item>
+        <el-form-item label="领养日期">
+          <el-date-picker v-model="catForm.adoption_date" type="date" placeholder="选择领养日期" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="是否热门">
+          <el-switch v-model="catForm.is_hot" />
+        </el-form-item>
+        <el-form-item label="图片">
+          <el-upload class="avatar-uploader" :show-file-list="false" :on-change="handleImageUpload"
+            :before-upload="beforeUpload" :auto-upload="false" accept="image/*">
+            <img v-if="catForm.imagePreview" :src="catForm.imagePreview" class="avatar">
+            <i v-else class="el-icon-plus avatar-uploader-icon"></i>
+          </el-upload>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="showEditCatModal = false">取消</el-button>
+          <el-button type="primary" :loading="submitting" @click="submitEditCat">确定</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script>
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import catApi from '../../api/catApi'
 
 export default {
@@ -110,6 +223,8 @@ export default {
       totalItems: 0,
       likingCats: [],
       loadingImages: [],
+      // 用户信息
+      user: null,
       // 我的领养相关
       showMyAdoptions: false,
       myCats: [],
@@ -118,10 +233,53 @@ export default {
       myCurrentPage: 1,
       myPageSize: 8,
       myTotalPages: 1,
-      myTotalItems: 0
+      myTotalItems: 0,
+      // 状态过滤
+      selectedStatus: '',
+      statusOptions: [
+        { label: '全部', value: '' },
+        { label: '待审核', value: 'pending' },
+        { label: '已通过', value: 'approved' },
+        { label: '已拒绝', value: 'rejected' }
+      ],
+      // 创建猫咪相关
+      showCreateCatModal: false,
+      showEditCatModal: false,
+      editingCatId: null,
+      catForm: {
+        name: '',
+        breed: '',
+        age: 0,
+        age_display: '',
+        description: '',
+        adoption_status: '',
+        adoption_requirements: '',
+        adoption_date: '',
+        is_hot: false,
+        image: '',
+        imagePreview: null,
+        imageFile: null
+      },
+      catFormRules: {
+        name: [{ required: true, message: '请输入猫咪名字', trigger: 'blur' }],
+        breed: [{ required: true, message: '请输入品种', trigger: 'blur' }],
+        age: [{ required: true, message: '请输入年龄', trigger: 'blur' }],
+        age_display: [{ required: true, message: '请输入年龄显示', trigger: 'blur' }],
+        description: [{ required: true, message: '请输入描述', trigger: 'blur' }],
+        adoption_requirements: [{ required: true, message: '请输入领养要求', trigger: 'blur' }]
+      },
+      submitting: false
+    }
+  },
+  computed: {
+    // 判断用户是否为管理员
+    isAdmin() {
+      return this.user?.role === 'admin';
     }
   },
   mounted() {
+    // 加载用户信息
+    this.loadUserInfo();
     this.fetchCats()
   },
   watch: {
@@ -135,6 +293,44 @@ export default {
     }
   },
   methods: {
+    // 加载用户信息
+    loadUserInfo() {
+      const userInfo = localStorage.getItem('user');
+      if (userInfo) {
+        try {
+          this.user = JSON.parse(userInfo);
+        } catch (error) {
+          console.error('解析用户信息失败:', error);
+        }
+      }
+    },
+    // 获取状态类型
+    getStatusType(status) {
+      switch (status) {
+        case 'approved':
+          return 'success';
+        case 'rejected':
+          return 'danger';
+        case 'pending':
+          return 'warning';
+        default:
+          return '';
+      }
+    },
+    // 获取状态文本
+    getStatusText(status) {
+      switch (status) {
+        case 'approved':
+          return '已通过';
+        case 'rejected':
+          return '已拒绝';
+        case 'pending':
+          return '待审核';
+        default:
+          return '';
+      }
+    },
+
     // 切换我的领养视图
     toggleMyAdoptions() {
       this.showMyAdoptions = !this.showMyAdoptions
@@ -147,17 +343,208 @@ export default {
       try {
         this.loadingMyAdoptions = true
         this.errorMyAdoptions = ''
-        const response = await catApi.getMyCats(this.myCurrentPage, this.myPageSize)
-        this.myCats = response.data
-        this.myTotalItems = response.total
-        this.myTotalPages = response.totalPages
+        // 无论用户角色，都使用/api/cats/my接口获取领养列表
+        const response = await catApi.getMyCats(this.myCurrentPage, this.myPageSize, this.selectedStatus)
+        console.log('获取领养列表响应:', response)
+        this.myCats = response.data || response.items || []
+        this.myTotalItems = response.total || 0
+        this.myTotalPages = response.totalPages || 1
       } catch (error) {
-        console.error('获取我的领养失败:', error)
-        this.errorMyAdoptions = '获取我的领养失败'
-        ElMessage.error('获取我的领养失败')
+        console.error('获取领养列表失败:', error)
+        this.errorMyAdoptions = '获取领养列表失败'
+        ElMessage.error('获取领养列表失败')
       } finally {
         this.loadingMyAdoptions = false
       }
+    },
+    // 处理图片上传
+    handleImageUpload(file) {
+      if (file.raw) {
+        // 保存文件对象
+        this.catForm.imageFile = file.raw;
+
+        // 创建FileReader对象来读取文件，用于预览
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          // 将图片转换为base64格式存储，仅用于预览
+          this.catForm.imagePreview = e.target.result;
+        };
+        reader.readAsDataURL(file.raw);
+      }
+    },
+    // 上传前校验
+    beforeUpload(file) {
+      const isJPG = file.type === 'image/jpeg' || file.type === 'image/png' || file.type === 'image/gif';
+      const isLt2M = file.size / 1024 / 1024 < 2;
+
+      if (!isJPG) {
+        ElMessage.error('只能上传 JPG、PNG 或 GIF 格式的图片!');
+      }
+      if (!isLt2M) {
+        ElMessage.error('图片大小不能超过 2MB!');
+      }
+
+      return isJPG && isLt2M;
+    },
+    // 提交创建猫咪表单
+    async submitCreateCat() {
+      try {
+        await this.$refs.catFormRef.validate();
+
+        this.submitting = true;
+
+        // 创建FormData对象
+        const formData = new FormData();
+
+        // 添加文本字段
+        formData.append('name', this.catForm.name);
+        formData.append('breed', this.catForm.breed);
+        formData.append('age', this.catForm.age);
+        formData.append('age_display', this.catForm.age_display);
+        formData.append('description', this.catForm.description);
+        formData.append('adoption_requirements', this.catForm.adoption_requirements);
+
+        // 添加图片文件（如果有）
+        if (this.catForm.imageFile) {
+          formData.append('image', this.catForm.imageFile);
+        }
+
+        // 调用API创建猫咪
+        await catApi.createCat(formData);
+
+        ElMessage.success('创建猫咪成功！');
+        this.showCreateCatModal = false;
+
+        // 重置表单
+        this.resetCatForm();
+
+        // 重新获取我的领养列表
+        this.fetchMyCats();
+      } catch (error) {
+        if (error !== 'cancel') {
+          ElMessage.error('创建猫咪失败: ' + error.message);
+          console.error('创建猫咪错误:', error);
+        }
+      } finally {
+        this.submitting = false;
+      }
+    },
+    // 编辑猫咪
+    editCat(cat) {
+      this.editingCatId = cat.id;
+      // 填充表单数据
+      this.catForm = {
+        name: cat.name,
+        breed: cat.breed,
+        age: cat.age,
+        age_display: cat.age_display,
+        description: cat.description,
+        adoption_status: cat.adoption_status || '',
+        adoption_requirements: cat.adoption_requirements || '',
+        adoption_date: cat.adoption_date || '',
+        is_hot: cat.is_hot || false,
+        image: cat.image || '',
+        imagePreview: cat.image ? this.getImageUrl(cat.image) : null,
+        imageFile: null
+      };
+      this.showEditCatModal = true;
+    },
+    // 删除猫咪
+    async deleteCat(catId) {
+      try {
+        await ElMessageBox.confirm('确定要删除这只猫咪吗？', '删除确认', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        });
+
+        await catApi.deleteCat(catId);
+        ElMessage.success('删除成功！');
+        // 重新获取我的领养列表
+        this.fetchMyCats();
+      } catch (error) {
+        if (error !== 'cancel') {
+          ElMessage.error('删除失败: ' + error.message);
+          console.error('删除猫咪错误:', error);
+        }
+      }
+    },
+    // 提交编辑猫咪表单
+    async submitEditCat() {
+      try {
+        await this.$refs.catFormRef.validate();
+
+        this.submitting = true;
+
+        // 创建FormData对象
+        const formData = new FormData();
+
+        // 添加文本字段
+        formData.append('name', this.catForm.name);
+        formData.append('breed', this.catForm.breed);
+        formData.append('age', this.catForm.age);
+        formData.append('age_display', this.catForm.age_display);
+        formData.append('description', this.catForm.description);
+        formData.append('adoption_status', this.catForm.adoption_status);
+        formData.append('adoption_requirements', this.catForm.adoption_requirements);
+        formData.append('adoption_date', this.catForm.adoption_date);
+        formData.append('is_hot', this.catForm.is_hot);
+
+        // 添加图片文件（如果有）
+        if (this.catForm.imageFile) {
+          formData.append('image', this.catForm.imageFile);
+        }
+
+        // 调用API更新猫咪
+        await catApi.updateCat(this.editingCatId, formData);
+
+        ElMessage.success('更新猫咪成功！');
+        this.showEditCatModal = false;
+
+        // 重置表单
+        this.resetCatForm();
+
+        // 重新获取我的领养列表
+        this.fetchMyCats();
+      } catch (error) {
+        if (error !== 'cancel') {
+          ElMessage.error('更新猫咪失败: ' + error.message);
+          console.error('更新猫咪错误:', error);
+        }
+      } finally {
+        this.submitting = false;
+      }
+    },
+    // 重置猫咪表单
+    resetCatForm() {
+      this.editingCatId = null;
+      this.catForm = {
+        name: '',
+        breed: '',
+        age: 0,
+        age_display: '',
+        description: '',
+        adoption_status: '',
+        adoption_requirements: '',
+        adoption_date: '',
+        is_hot: false,
+        image: '',
+        imagePreview: null,
+        imageFile: null
+      };
+      if (this.$refs.catFormRef) {
+        this.$refs.catFormRef.resetFields();
+      }
+    },
+    // 获取图片URL
+    getImageUrl(image) {
+      if (!image) return '';
+      // 如果是完整URL或base64，直接返回
+      if (image.startsWith('http') || image.startsWith('data:image')) {
+        return image;
+      }
+      // 否则拼接上传路径
+      return `http://localhost:3000/uploads/${image}`;
     },
     async fetchCats() {
       try {
@@ -202,6 +589,57 @@ export default {
         return '刚刚'
       }
     },
+    // 通过猫咪领养申请
+    async approveCat(catId) {
+      try {
+        await ElMessageBox.confirm('确定要通过这只猫咪的领养申请吗？', '通过确认', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'success'
+        });
+
+        await catApi.updateCatStatus(catId, 'approved');
+        ElMessage.success('通过成功！');
+        // 重新获取领养列表
+        this.fetchMyCats();
+      } catch (error) {
+        if (error !== 'cancel') {
+          ElMessage.error('通过失败: ' + error.message);
+          console.error('通过猫咪错误:', error);
+        }
+      }
+    },
+    // 驳回猫咪领养申请
+    async rejectCat(catId) {
+      try {
+        const { value: rejectionReason } = await ElMessageBox.prompt(
+          '请输入驳回理由:',
+          '驳回确认',
+          {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning',
+            inputPlaceholder: '请输入驳回理由',
+            inputValidator: (value) => {
+              if (!value || value.trim() === '') {
+                return '请输入驳回理由';
+              }
+            }
+          }
+        );
+
+        await catApi.updateCatStatus(catId, 'rejected', rejectionReason);
+        ElMessage.success('驳回成功！');
+        // 重新获取领养列表
+        this.fetchMyCats();
+      } catch (error) {
+        if (error !== 'cancel') {
+          ElMessage.error('驳回失败: ' + error.message);
+          console.error('驳回猫咪错误:', error);
+        }
+      }
+    },
+
     async likeCat(catId) {
       const cat = this.cats.find(c => c.id === catId)
       if (!cat || this.likingCats.includes(catId)) return
@@ -248,6 +686,7 @@ export default {
 <style scoped>
 .adopt-view {
   padding: 2rem 0;
+
 }
 
 h2 {

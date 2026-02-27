@@ -5,17 +5,25 @@ const catApi = {
   // 创建猫咪（包含图片上传）
   createCat: async (catData) => {
     try {
-      const formData = new FormData();
+      // 检查是否已经是FormData对象
+      let formData;
+      if (catData instanceof FormData) {
+        formData = catData;
+      } else {
+        formData = new FormData();
 
-      // 添加文本字段
-      formData.append('name', catData.name);
-      formData.append('breed', catData.breed || '');
-      formData.append('age', catData.age || '');
-      formData.append('description', catData.description || '');
+        // 添加文本字段
+        formData.append('name', catData.name);
+        formData.append('breed', catData.breed || '');
+        formData.append('age', catData.age || '');
+        formData.append('age_display', catData.age_display || '');
+        formData.append('description', catData.description || '');
+        formData.append('adoption_requirements', catData.adoption_requirements || '');
 
-      // 添加图片文件（如果有）
-      if (catData.image && typeof catData.image === 'object') {
-        formData.append('image', catData.image);
+        // 添加图片文件（如果有）
+        if (catData.image && typeof catData.image === 'object') {
+          formData.append('image', catData.image);
+        }
       }
 
       return await request('/cats', {
@@ -36,9 +44,13 @@ const catApi = {
   },
 
   // 获取所有猫咪
-  getCats: async (page = 1, pageSize = 6) => {
+  getCats: async (page = 1, pageSize = 6, status = '') => {
     try {
-      const cats = await request(`/cats?page=${page}&pageSize=${pageSize}`);
+      let url = `/cats?page=${page}&pageSize=${pageSize}`;
+      if (status) {
+        url += `&status=${status}`;
+      }
+      const cats = await request(url);
 
       // 处理不同的响应结构
       let catsArray = [];
@@ -153,17 +165,28 @@ const catApi = {
   // 更新猫咪（包含图片上传）
   updateCat: async (id, catData) => {
     try {
-      const formData = new FormData();
+      // 检查是否已经是FormData对象
+      let formData;
+      if (catData instanceof FormData) {
+        formData = catData;
+      } else {
+        formData = new FormData();
 
-      // 添加文本字段
-      formData.append('name', catData.name);
-      formData.append('breed', catData.breed || '');
-      formData.append('age', catData.age || '');
-      formData.append('description', catData.description || '');
+        // 添加文本字段
+        formData.append('name', catData.name);
+        formData.append('breed', catData.breed || '');
+        formData.append('age', catData.age || '');
+        formData.append('age_display', catData.age_display || '');
+        formData.append('description', catData.description || '');
+        formData.append('adoption_status', catData.adoption_status || '');
+        formData.append('adoption_requirements', catData.adoption_requirements || '');
+        formData.append('adoption_date', catData.adoption_date || '');
+        formData.append('is_hot', catData.is_hot || false);
 
-      // 添加图片文件（如果有）
-      if (catData.image && typeof catData.image === 'object') {
-        formData.append('image', catData.image);
+        // 添加图片文件（如果有）
+        if (catData.image && typeof catData.image === 'object') {
+          formData.append('image', catData.image);
+        }
       }
 
       return await request(`/cats/${id}`, {
@@ -190,6 +213,25 @@ const catApi = {
     } catch (error) {
       console.warn('删除猫咪API不可用，使用模拟数据');
       return { success: true, message: '删除成功' };
+    }
+  },
+  // 更新猫咪状态
+  updateCatStatus: async (id, status, rejectionReason = '') => {
+    try {
+      const requestBody = { status };
+      if (status === 'rejected' && rejectionReason) {
+        requestBody.rejection_reason = rejectionReason;
+      }
+      return await request(`/cats/${id}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      });
+    } catch (error) {
+      console.warn('更新猫咪状态API不可用，使用模拟数据');
+      return { success: true, message: '状态更新成功' };
     }
   },
 
@@ -279,9 +321,13 @@ const catApi = {
   },
 
   // 获取用户发布的猫咪（领养）
-  getMyCats: async (page = 1, pageSize = 8) => {
+  getMyCats: async (page = 1, pageSize = 8, status = '') => {
     try {
-      const response = await request(`/cats/my?page=${page}&pageSize=${pageSize}`);
+      let url = `/cats/my?page=${page}&pageSize=${pageSize}`;
+      if (status) {
+        url += `&status=${status}`;
+      }
+      const response = await request(url);
       return response;
     } catch (error) {
       console.warn('获取用户发布的猫咪API不可用，使用模拟数据');

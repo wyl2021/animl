@@ -173,7 +173,7 @@ export default {
     },
     isFullWidthHeader() {
       const currentPath = this.$route.path;
-      return currentPath === '/' || currentPath.startsWith('/cats');
+      return currentPath === '/';
     }
   },
   mounted() {
@@ -293,14 +293,10 @@ export default {
           updatedUser = await catApi.updateUser(this.userInfo.id, updateData);
         }
 
-        // 更新本地存储的用户信息（不存储头像数据）
-        const userToStore = {
-          ...updatedUser,
-          avatar: null // 不存储头像数据，避免本地存储容量限制
-        };
-        localStorage.setItem('user', JSON.stringify(userToStore));
+        // 更新本地存储的用户信息
+        localStorage.setItem('user', JSON.stringify(updatedUser));
 
-        // 更新用户信息（使用API返回的头像）
+        // 更新用户信息
         this.user = updatedUser;
 
         ElMessage.success('更新成功！');
