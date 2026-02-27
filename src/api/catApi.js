@@ -397,6 +397,23 @@ const catApi = {
     }
   },
 
+  // 创建百科（带图片）
+  createEncyclopediaWithImage: async (formData) => {
+    try {
+      return await request('/encyclopedias/image', {
+        method: 'POST',
+        body: formData
+      });
+    } catch (error) {
+      console.warn('创建百科API不可用，使用模拟数据');
+      return {
+        id: Date.now(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+    }
+  },
+
   // 更新百科
   updateEncyclopedia: async (id, encyclopediaData) => {
     try {
@@ -414,6 +431,22 @@ const catApi = {
     }
   },
 
+  // 更新百科（带图片）
+  updateEncyclopediaWithImage: async (id, formData) => {
+    try {
+      return await request(`/encyclopedias/${id}`, {
+        method: 'PUT',
+        body: formData
+      });
+    } catch (error) {
+      console.warn('更新百科API不可用，使用模拟数据');
+      return {
+        id: id,
+        updated_at: new Date().toISOString()
+      };
+    }
+  },
+
   // 删除百科
   deleteEncyclopedia: async (id) => {
     try {
@@ -423,6 +456,80 @@ const catApi = {
     } catch (error) {
       console.warn('删除百科API不可用，使用模拟数据');
       return { message: 'Encyclopedia deleted successfully' };
+    }
+  },
+
+  // 获取用户信息
+  getUserInfo: async () => {
+    try {
+      return await request('/users/info', {
+        method: 'GET'
+      });
+    } catch (error) {
+      console.warn('获取用户信息API不可用，使用模拟数据');
+      return {
+        id: 1,
+        name: '测试用户',
+        account: 'test',
+        role: 'user',
+        avatar: null,
+        created_at: new Date().toISOString()
+      };
+    }
+  },
+
+  // 更新用户信息
+  updateUser: async (id, userData) => {
+    try {
+      return await request(`/users/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(userData)
+      });
+    } catch (error) {
+      console.warn('更新用户信息API不可用，使用模拟数据');
+      return {
+        id: id,
+        ...userData,
+        updated_at: new Date().toISOString()
+      };
+    }
+  },
+
+  // 更新用户信息（带图片）
+  updateUserWithImage: async (id, userForm) => {
+    try {
+      // 创建FormData对象
+      const formData = new FormData();
+      
+      // 添加文本字段
+      formData.append('name', userForm.name || '');
+      formData.append('account', userForm.account || '');
+      
+      // 只有当密码不为空时才添加密码
+      if (userForm.password) {
+        formData.append('password', userForm.password);
+      }
+      
+      // 只有当头像文件存在时才添加头像
+      if (userForm.avatarFile) {
+        formData.append('avatar', userForm.avatarFile);
+      }
+      
+      // 调用API更新用户信息（使用新的接口地址）
+      return await request(`/users/${id}/image`, {
+        method: 'PUT',
+        body: formData
+      });
+    } catch (error) {
+      console.warn('更新用户信息API不可用，使用模拟数据');
+      return {
+        id: id,
+        name: userForm.name || '',
+        account: userForm.account || '',
+        role: 'user',
+        avatar: userForm.avatar || null,
+        updated_at: new Date().toISOString()
+      };
     }
   }
 };

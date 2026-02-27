@@ -66,7 +66,9 @@ export default {
         localStorage.setItem('user', JSON.stringify({
           id: data.id,
           name: data.name,
-          account: data.account
+          account: data.account,
+          role: data.role,
+          avatar: data.avatar
         }))
 
         ElMessage.success('登录成功！')

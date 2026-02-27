@@ -11,7 +11,7 @@
                     </template>
                 </el-input>
             </div>
-            <el-button type="primary" @click="showAddModal = true">添加百科</el-button>
+            <el-button v-if="isAdmin" type="primary" @click="showAddModal = true">添加百科</el-button>
         </div>
 
         <!-- 百科列表 -->
@@ -65,7 +65,7 @@
                     </div>
 
                     <!-- 操作按钮 -->
-                    <div class="encyclopedia-actions" style="margin-top: 1rem; text-align: right;">
+                    <div class="encyclopedia-actions" style="margin-top: 1rem; text-align: right;" v-if="isAdmin">
                         <el-dropdown>
                             <el-button size="small" type="primary" plain>
                                 更多操作
@@ -75,7 +75,6 @@
                             </el-button>
                             <template #dropdown>
                                 <el-dropdown-menu>
-                                    <el-dropdown-item @click.stop="viewDetail(item)">查看详情</el-dropdown-item>
                                     <el-dropdown-item @click.stop="editEncyclopedia(item)">编辑</el-dropdown-item>
                                     <el-dropdown-item @click.stop="deleteEncyclopedia(item.id)"
                                         type="danger">删除</el-dropdown-item>
@@ -131,8 +130,8 @@
                 <el-form-item label="图片">
                     <el-upload class="avatar-uploader" :show-file-list="false" :on-change="handleImageChange"
                         :before-upload="beforeUpload" :auto-upload="false" accept="image/*">
-                        <img v-if="imagePreview" :src="imagePreview" class="avatar">
-                        <img v-else-if="form.imagesInput" :src="form.imagesInput" class="avatar">
+                        <img v-if="form.imagePreview" :src="form.imagePreview" class="avatar">
+                        <img v-else-if="form.images" :src="form.images" class="avatar">
                         <i v-else class="el-icon-plus avatar-uploader-icon"></i>
                         <template #tip>
                             <div class="el-upload__tip">
@@ -140,8 +139,6 @@
                             </div>
                         </template>
                     </el-upload>
-                    <el-input v-model="form.imagesInput" placeholder="或输入图片URL，多张图片用逗号分隔"
-                        style="margin-top: 10px;"></el-input>
                 </el-form-item>
                 <el-form-item label="稀有度">
                     <el-select v-model="form.rarity" placeholder="请选择稀有度">
@@ -229,18 +226,17 @@ export default {
     name: 'EncyclopediaView',
     data() {
         return {
-            // 百科列表数据
+            // 百科列表
             encyclopedias: [],
-            // 分页数据
+            // 加载状态
+            loading: false,
+            // 分页信息
             currentPage: 1,
             pageSize: 10,
             total: 0,
-            // 搜索数据
+            // 搜索关键词
             searchBreed: '',
-            // 加载状态
-            loading: false,
-            submitting: false,
-            // 弹窗控制
+            // 添加/编辑弹窗
             showAddModal: false,
             showDetailModal: false,
             // 表单数据
@@ -252,7 +248,9 @@ export default {
                 care_guide: '',
                 behavior_analysis: '',
                 fun_facts: '',
-                imagesInput: '',
+                images: '',
+                imageFile: null,
+                imagePreview: '',
                 rarity: '普通'
             },
             // 图片文件列表
@@ -267,13 +265,37 @@ export default {
             // 编辑状态
             editingItem: null,
             // 当前详情数据
-            currentEncyclopedia: null
+            currentEncyclopedia: null,
+            // 用户信息
+            user: null
         }
     },
     mounted() {
+        // 加载用户信息
+        this.loadUserInfo()
+        // 获取百科列表
         this.fetchEncyclopedias()
     },
+    computed: {
+        // 检查用户是否为管理员
+        isAdmin() {
+            return this.user?.role === 'admin'
+        }
+    },
     methods: {
+        // 加载用户信息
+        loadUserInfo() {
+            const userInfo = localStorage.getItem('user')
+            if (userInfo) {
+                try {
+                    this.user = JSON.parse(userInfo)
+                } catch (error) {
+                    console.error('解析用户信息失败:', error)
+                }
+            } else {
+                console.log('本地存储中没有用户信息')
+            }
+        },
         // 获取百科列表
         async fetchEncyclopedias() {
             this.loading = true
@@ -313,7 +335,9 @@ export default {
                 care_guide: item.care_guide,
                 behavior_analysis: item.behavior_analysis,
                 fun_facts: item.fun_facts,
-                imagesInput: item.images?.join(',') || '',
+                images: this.getImageUrl(item.images),
+                imageFile: null,
+                imagePreview: '',
                 rarity: item.rarity
             }
             this.showAddModal = true
@@ -348,17 +372,30 @@ export default {
 
                 this.submitting = true
 
-                const formData = {
-                    ...this.form,
-                    images: this.form.imagesInput ? this.form.imagesInput.split(',').map(img => img.trim()) : []
+                // 使用FormData来处理二进制数据
+                const formData = new FormData()
+                formData.append('scientific_name', this.form.scientific_name || '')
+                formData.append('breed', this.form.breed || '')
+                formData.append('characteristics', this.form.characteristics || '')
+                formData.append('habits', this.form.habits || '')
+                formData.append('care_guide', this.form.care_guide || '')
+                formData.append('behavior_analysis', this.form.behavior_analysis || '')
+                formData.append('fun_facts', this.form.fun_facts || '')
+                formData.append('images', this.form.images || '')
+                formData.append('rarity', this.form.rarity || '普通')
+
+                // 添加图片文件（如果有）
+                if (this.form.imageFile) {
+                    formData.append('image', this.form.imageFile)
                 }
-                delete formData.imagesInput
 
                 if (this.editingItem) {
-                    await catApi.updateEncyclopedia(this.editingItem.id, formData)
+                    // 更新操作：使用PUT /api/encyclopedias/:id端点
+                    await catApi.updateEncyclopediaWithImage(this.editingItem.id, formData)
                     ElMessage.success('更新成功！')
                 } else {
-                    await catApi.createEncyclopedia(formData)
+                    // 创建操作：使用POST /api/encyclopedias/image端点
+                    await catApi.createEncyclopediaWithImage(formData)
                     ElMessage.success('添加成功！')
                 }
 
@@ -385,7 +422,9 @@ export default {
                 care_guide: '',
                 behavior_analysis: '',
                 fun_facts: '',
-                imagesInput: '',
+                images: '',
+                imageFile: null,
+                imagePreview: '',
                 rarity: '普通'
             }
             this.imageFiles = []
@@ -399,14 +438,13 @@ export default {
         handleImageChange(file) {
             if (file.raw) {
                 // 保存文件对象
-                this.imageFiles = [file]
+                this.form.imageFile = file.raw
 
                 // 创建FileReader对象来读取文件，用于预览
                 const reader = new FileReader()
                 reader.onload = (e) => {
-                    // 将图片转换为base64格式存储，用于预览
-                    this.imagePreview = e.target.result
-                    this.form.imagesInput = e.target.result
+                    // 将图片转换为base64格式存储，仅用于预览
+                    this.form.imagePreview = e.target.result
                 }
                 reader.readAsDataURL(file.raw)
             }
@@ -425,6 +463,17 @@ export default {
             }
 
             return isJPG && isLt2M
+        },
+
+        // 获取图片URL
+        getImageUrl(image) {
+            if (!image) return ''
+            // 如果是完整URL或base64，直接返回
+            if (image.startsWith('http') || image.startsWith('data:image')) {
+                return image
+            }
+            // 否则拼接完整的上传路径
+            return `http://localhost:3000/uploads/${image}`
         },
 
         // 获取稀有度标签类型
@@ -844,7 +893,7 @@ export default {
 }
 
 .avatar {
-    width: 178px;
+    width: 255px;
     height: 178px;
     display: block;
 }
