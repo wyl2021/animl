@@ -76,8 +76,29 @@ const router = createRouter({
       path: '/encyclopedia',
       name: 'encyclopedia',
       component: () => import('../views/cats/EncyclopediaView.vue')
+    },
+    {
+      path: '/manager',
+      name: 'manager',
+      component: () => import('../views/manager/ManagerView.vue')
     }
   ]
 })
+
+// 导航守卫，确保用户未登录时无法访问需要权限的页面
+router.beforeEach((to, from, next) => {
+  // 检查用户是否已登录
+  const isLoggedIn = localStorage.getItem('user') !== null;
+  
+  // 检查当前路由是否需要认证
+  const isAuthPage = to.meta.isAuthPage || to.path === '/login' || to.path === '/register';
+  
+  // 如果用户未登录且访问的不是认证页面，则重定向到登录页面
+  if (!isLoggedIn && !isAuthPage) {
+    next('/login');
+  } else {
+    next();
+  }
+});
 
 export default router

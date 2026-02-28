@@ -340,9 +340,13 @@ const catApi = {
   },
 
   // 获取用户发布的帖子（互动）
-  getMyPosts: async (page = 1, pageSize = 10) => {
+  getMyPosts: async (page = 1, pageSize = 10, status = '') => {
     try {
-      const response = await request(`/posts/my?page=${page}&pageSize=${pageSize}`);
+      let url = `/posts/my?page=${page}&pageSize=${pageSize}`;
+      if (status) {
+        url += `&status=${status}`;
+      }
+      const response = await request(url);
       return response;
     } catch (error) {
       console.warn('获取用户发布的帖子API不可用，使用模拟数据');
@@ -355,6 +359,38 @@ const catApi = {
           totalPages: 0
         }
       };
+    }
+  },
+
+  // 更新帖子状态
+  updatePostStatus: async (id, status, rejectionReason = '') => {
+    try {
+      const requestBody = { status };
+      if (status === 'rejected' && rejectionReason) {
+        requestBody.rejection_reason = rejectionReason;
+      }
+      return await request(`/posts/${id}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      });
+    } catch (error) {
+      console.warn('更新帖子状态API不可用，使用模拟数据');
+      return { success: true, message: '状态更新成功' };
+    }
+  },
+
+  // 删除帖子
+  deletePost: async (id) => {
+    try {
+      return await request(`/posts/${id}`, {
+        method: 'DELETE'
+      });
+    } catch (error) {
+      console.warn('删除帖子API不可用，使用模拟数据');
+      return { success: true, message: '删除成功' };
     }
   },
 
@@ -610,6 +646,69 @@ const catApi = {
         avatar: userForm.avatar || null,
         updated_at: new Date().toISOString()
       };
+    }
+  },
+
+  // 获取用户列表
+  getUsers: async (page = 1, pageSize = 10) => {
+    try {
+      const response = await request(`/users?page=${page}&pageSize=${pageSize}`);
+      return response;
+    } catch (error) {
+      console.warn('获取用户列表API不可用，使用模拟数据');
+      return {
+        users: [
+          {
+            id: 1,
+            name: '管理员',
+            account: 'admin',
+            role: 'admin',
+            created_at: new Date().toISOString()
+          },
+          {
+            id: 2,
+            name: '测试用户',
+            account: 'test',
+            role: 'user',
+            created_at: new Date().toISOString()
+          }
+        ],
+        pagination: {
+          page: 1,
+          limit: 10,
+          total: 2,
+          totalPages: 1
+        }
+      };
+    }
+  },
+
+  // 注册用户
+  registerUser: async (userData) => {
+    try {
+      return await request('/users', {
+        method: 'POST',
+        body: JSON.stringify(userData)
+      });
+    } catch (error) {
+      console.warn('注册用户API不可用，使用模拟数据');
+      return {
+        id: Date.now(),
+        ...userData,
+        created_at: new Date().toISOString()
+      };
+    }
+  },
+
+  // 删除用户
+  deleteUser: async (id) => {
+    try {
+      return await request(`/users/${id}`, {
+        method: 'DELETE'
+      });
+    } catch (error) {
+      console.warn('删除用户API不可用，使用模拟数据');
+      return { success: true, message: '删除成功' };
     }
   }
 };

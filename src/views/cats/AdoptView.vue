@@ -35,10 +35,10 @@
               {{ formatDate(scope.row.created_at) }}
             </template>
           </el-table-column>
-          <el-table-column prop="adoption_status" label="状态" width="100">
+          <el-table-column prop="status" label="状态" width="100">
             <template #default="scope">
-              <el-tag :type="getStatusType(scope.row.adoption_status)">{{ getStatusText(scope.row.adoption_status)
-                }}</el-tag>
+              <el-tag :type="getStatusType(scope.row.adoption_status)">{{ getStatusText(scope.row.status)
+              }}</el-tag>
             </template>
           </el-table-column>
           <el-table-column prop="rejection_reason" label="驳回理由" show-overflow-tooltip />

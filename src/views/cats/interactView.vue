@@ -8,7 +8,15 @@
 
         <!-- 我的互动表格 -->
         <div v-if="showMyInteractions" class="my-interactions-section">
-            <!-- <h3>我的互动</h3> -->
+            <div class="section-header">
+                <div class="header-actions">
+                    <el-select v-model="selectedStatus" placeholder="选择状态" style="width: 120px; margin-right: 10px;"
+                        @change="fetchMyPosts">
+                        <el-option v-for="option in statusOptions" :key="option.value" :label="option.label"
+                            :value="option.value" />
+                    </el-select>
+                </div>
+            </div>
             <div v-if="loadingMyPosts" style="text-align: center; padding: 3rem;">
                 <el-skeleton :rows="3" animated />
             </div>
@@ -27,12 +35,38 @@
                     </el-table-column>
                     <el-table-column prop="likes_count" label="点赞数" width="100" />
                     <el-table-column prop="comments_count" label="评论数" width="100" />
-                    <el-table-column label="操作" width="150">
+                    <el-table-column prop="status" label="状态" width="100">
+                        <template #default="scope">
+                            <el-tag :type="getStatusType(scope.row.status)">{{ getStatusText(scope.row.status)
+                                }}</el-tag>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="rejection_reason" label="驳回理由" show-overflow-tooltip />
+                    <el-table-column label="操作" width="200">
                         <template #default="scope">
                             <el-button size="small" @click="goToPostDetail(scope.row)">详情</el-button>
+                            <template v-if="isAdmin">
+                                <template v-if="scope.row.status === 'approved'">
+                                    <el-button size="small" type="danger"
+                                        @click="deletePost(scope.row.id)">删除</el-button>
+                                </template>
+                                <template v-else>
+                                    <el-button size="small" type="success"
+                                        @click="approvePost(scope.row.id)">通过</el-button>
+                                    <el-button size="small" type="danger"
+                                        @click="rejectPost(scope.row.id)">驳回</el-button>
+                                </template>
+                            </template>
+                            <template v-else>
+                                <el-button size="small" type="primary" @click="editPost(scope.row)">编辑</el-button>
+                                <el-button size="small" type="danger" @click="deletePost(scope.row.id)">删除</el-button>
+                            </template>
                         </template>
                     </el-table-column>
                 </el-table>
+                <div v-if="!myPosts || myPosts.length === 0" class="empty-state">
+                    <p>暂无互动信息</p>
+                </div>
                 <div class="pagination-wrapper">
                     <el-pagination v-if="myTotalPages > 1" v-model:current-page="myCurrentPage" :page-size="myPageSize"
                         :total="myTotalItems" layout="prev, pager, next, jumper" @current-change="fetchMyPosts" />
@@ -211,7 +245,7 @@
 </template>
 
 <script>
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Star, ChatDotRound, More } from '@element-plus/icons-vue'
 import catApi from '../../api/catApi'
 
@@ -257,20 +291,73 @@ export default {
             myCurrentPage: 1,
             myPageSize: 10,
             myTotalPages: 1,
-            myTotalItems: 0
+            myTotalItems: 0,
+            // 用户信息
+            user: null,
+            // 状态过滤
+            selectedStatus: '',
+            statusOptions: [
+                { label: '全部', value: '' },
+                { label: '待审核', value: 'pending' },
+                { label: '已通过', value: 'approved' },
+                { label: '已拒绝', value: 'rejected' }
+            ]
         }
     },
     computed: {
         // 为了保持模板兼容性
         totalItems() {
             return this.totalPosts
+        },
+        // 判断用户是否为管理员
+        isAdmin() {
+            return this.user?.role === 'admin';
         }
     },
     mounted() {
+        // 加载用户信息
+        this.loadUserInfo();
         this.fetchPosts()
         this.fetchCats()
     },
     methods: {
+        // 加载用户信息
+        loadUserInfo() {
+            const userInfo = localStorage.getItem('user');
+            if (userInfo) {
+                try {
+                    this.user = JSON.parse(userInfo);
+                } catch (error) {
+                    console.error('解析用户信息失败:', error);
+                }
+            }
+        },
+        // 获取状态类型
+        getStatusType(status) {
+            switch (status) {
+                case 'approved':
+                    return 'success';
+                case 'rejected':
+                    return 'danger';
+                case 'pending':
+                    return 'warning';
+                default:
+                    return '';
+            }
+        },
+        // 获取状态文本
+        getStatusText(status) {
+            switch (status) {
+                case 'approved':
+                    return '已通过';
+                case 'rejected':
+                    return '已拒绝';
+                case 'pending':
+                    return '待审核';
+                default:
+                    return '';
+            }
+        },
         // 切换我的互动视图
         toggleMyInteractions() {
             this.showMyInteractions = !this.showMyInteractions
@@ -283,7 +370,7 @@ export default {
             try {
                 this.loadingMyPosts = true
                 this.errorMyPosts = ''
-                const response = await catApi.getMyPosts(this.myCurrentPage, this.myPageSize)
+                const response = await catApi.getMyPosts(this.myCurrentPage, this.myPageSize, this.selectedStatus)
                 this.myPosts = response.posts
                 this.myTotalItems = response.pagination.total
                 this.myTotalPages = response.pagination.totalPages
@@ -672,6 +759,85 @@ export default {
             // 这里需要根据实际的路由配置修改
             // 假设帖子详情页路由为 /posts/:id
             this.$router.push(`/posts/${post.id}`)
+        },
+        // 编辑帖子
+        editPost(post) {
+            // 这里可以添加编辑帖子的逻辑
+            // 例如打开编辑弹窗，填充表单数据等
+            ElMessage.info('编辑帖子功能待实现')
+        },
+        // 删除帖子
+        async deletePost(postId) {
+            try {
+                await ElMessageBox.confirm('确定要删除这篇帖子吗？', '删除确认', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                });
+
+                // 调用API删除帖子
+                await catApi.deletePost(postId);
+                ElMessage.success('删除成功！');
+                // 重新获取我的互动列表
+                this.fetchMyPosts();
+            } catch (error) {
+                if (error !== 'cancel') {
+                    ElMessage.error('删除失败: ' + error.message);
+                    console.error('删除帖子错误:', error);
+                }
+            }
+        },
+        // 通过帖子审核
+        async approvePost(postId) {
+            try {
+                await ElMessageBox.confirm('确定要通过这篇帖子吗？', '通过确认', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'success'
+                });
+
+                // 调用API更新帖子状态
+                await catApi.updatePostStatus(postId, 'approved');
+                ElMessage.success('通过成功！');
+                // 重新获取我的互动列表
+                this.fetchMyPosts();
+            } catch (error) {
+                if (error !== 'cancel') {
+                    ElMessage.error('通过失败: ' + error.message);
+                    console.error('通过帖子错误:', error);
+                }
+            }
+        },
+        // 驳回帖子审核
+        async rejectPost(postId) {
+            try {
+                const { value: rejectionReason } = await ElMessageBox.prompt(
+                    '请输入驳回理由:',
+                    '驳回确认',
+                    {
+                        confirmButtonText: '确定',
+                        cancelButtonText: '取消',
+                        type: 'warning',
+                        inputPlaceholder: '请输入驳回理由',
+                        inputValidator: (value) => {
+                            if (!value || value.trim() === '') {
+                                return '请输入驳回理由';
+                            }
+                        }
+                    }
+                );
+
+                // 调用API更新帖子状态
+                await catApi.updatePostStatus(postId, 'rejected', rejectionReason);
+                ElMessage.success('驳回成功！');
+                // 重新获取我的互动列表
+                this.fetchMyPosts();
+            } catch (error) {
+                if (error !== 'cancel') {
+                    ElMessage.error('驳回失败: ' + error.message);
+                    console.error('驳回帖子错误:', error);
+                }
+            }
         }
     }
 }
